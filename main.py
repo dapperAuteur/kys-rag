@@ -273,6 +273,8 @@ async def save_study(study: Study) -> Dict[str, Any]:
     try:
         logger.info(f"Processing save-study request for: {study.title}")
         vector = await model_manager.generate_embedding(study.text)
+        logger.debug(f"Generated embedding: {vector[:10]}... (truncated for brevity)")
+
         logger.info(f"Embedding generated successfully: {len(vector)} dimensions")
         
         study_doc = StudyDocument(
