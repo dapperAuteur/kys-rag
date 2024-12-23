@@ -483,40 +483,54 @@ async def system_status():
 
 @app.post("/test-embedding")
 async def test_embedding():
+    logger.info("Starting test embedding generation")
+    response = {"steps_completed": []}
+    
     try:
-        # Test with a simple string
+        # Step 1: Test tokenization
         test_text = "This is a test sentence."
-        logger.info("Starting test embedding generation")
-        
-        # Try tokenization
         inputs = tokenizer(
             test_text,
             return_tensors="pt",
             truncation=True,
-            max_length=512,
-            padding=True
+            max_length=512
         )
         logger.info("Tokenization successful")
+        response["steps_completed"].append("tokenization")
         
-        # Try embedding
+        # Step 2: Generate embedding
+        logger.info("Starting embedding generation")
         with torch.no_grad():
             outputs = embedding_model(**inputs)
-            vector = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
-            if len(vector.shape) == 0:
-                vector = vector.reshape(1)
-            vector = vector.tolist()
+        logger.info("Model output generated")
+        response["steps_completed"].append("model_output")
+        
+        # Step 3: Process output
+        vector = outputs.last_hidden_state.mean(dim=1).squeeze()
+        logger.info("Mean pooling completed")
+        response["steps_completed"].append("pooling")
+        
+        # Step 4: Convert to list
+        vector_list = vector.tolist()
+        logger.info(f"Conversion to list completed. Vector length: {len(vector_list)}")
+        response["steps_completed"].append("conversion")
         
         return {
             "success": True,
-            "vector_length": len(vector),
-            "sample_values": vector[:5]  # Return first 5 values of vector
+            "steps_completed": response["steps_completed"],
+            "vector_length": len(vector_list),
+            "sample_values": vector_list[:5]
         }
+        
     except Exception as e:
-        logger.error(f"Test embedding failed: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        logger.error(f"Error in test_embedding: {str(e)}")
+        response["error"] = str(e)
+        return response
+
+# Add a simpler test endpoint that just returns a string
+@app.post("/test-response")
+async def test_response():
+    return {"message": "Test response successful"}
         
 @app.get("/")
 def read_root():
