@@ -231,35 +231,51 @@ async def check_documents():
 
 @app.post("/save-study")
 async def save_study(study: Study):
+    logger.info(f"Attempting to save study: {study.title}")
+    
     if studies_collection is None:
+        logger.error("Database connection not available")
         raise HTTPException(status_code=503, detail="Database connection not available")
     
     try:
         # Generate embedding for the study text
+        logger.info("Generating vector embedding...")
         inputs = tokenizer(study.text, return_tensors="pt", truncation=True, max_length=512)
+        
         with torch.no_grad():
-            vector = embedding_model(**inputs).last_hidden_state.mean(dim=1).squeeze().tolist()
-        # Convert the study to a dictionary
+            outputs = embedding_model(**inputs)
+            vector = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+            if len(vector.shape) == 0:  # Handle scalar case
+                vector = vector.reshape(1)
+            vector = vector.tolist()
+            
+        logger.info(f"Vector generated successfully, length: {len(vector)}")
+        
+        # Prepare study document
         study_dict = study.dict()
-        study_dict["vector"] = vector # Add the generated vector to the study dictionary
+        study_dict["vector"] = vector
         
         # Insert into MongoDB
+        logger.info("Inserting study into MongoDB...")
         result = studies_collection.insert_one(study_dict)
+        logger.info(f"Study saved with ID: {result.inserted_id}")
         
-        # Check if study.vector exists
-        if not study.vector:  # If study.vector does not exist
-            study.vector = vector  # Assign the generated vector to study.vector
-        
-        # Add the vector to FAISS index
-        index.add(np.array([study.vector], dtype="float32"))
+        # Add vector to FAISS index
+        logger.info("Adding vector to FAISS index...")
+        vector_array = np.array([vector], dtype="float32")
+        index.add(vector_array)
+        logger.info(f"FAISS index now contains {index.ntotal} vectors")
         
         return {
             "message": "Study saved successfully",
-            "id": str(result.inserted_id)
+            "id": str(result.inserted_id),
+            "vector_length": len(vector),
+            "faiss_index_size": index.ntotal
         }
+        
     except Exception as e:
         logger.error(f"Error saving study: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to save study: {str(e)}")
 
 @app.get("/get-studies/{topic}")
 async def get_studies_by_topic(topic: str):
@@ -281,10 +297,6 @@ def search_vectors(query_vector: list):
    query = np.array([query_vector]).astype("float32")
    distances, indices = index.search(query, k=5)
    return {"distances": distances.tolist(), "indices": indices.tolist()}
-
-@app.get("/")
-def read_root():
-  return {"message": "Welcome to the KYS RAG: Science Decoder Tool!"}
 
 @app.post("/ask")
 def answer_question(request: QuestionRequest):
@@ -394,3 +406,39 @@ def search_studies(query: dict = Body(...)):
     except Exception as e:
         logger.error(f"Unexpected error in search_studies: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/system-status")
+async def system_status():
+    try:
+        # Check MongoDB connection
+        mongo_status = "connected" if studies_collection is not None else "disconnected"
+        doc_count = studies_collection.count_documents({}) if studies_collection is not None else 0
+        
+        # Check FAISS index
+        faiss_size = index.ntotal if index is not None else 0
+        
+        # Get sample of documents
+        recent_docs = []
+        if studies_collection is not None:
+            for doc in studies_collection.find().limit(5):
+                doc_info = {
+                    "id": str(doc["_id"]),
+                    "title": doc.get("title", "No title"),
+                    "has_vector": "vector" in doc,
+                    "vector_length": len(doc["vector"]) if "vector" in doc else None
+                }
+                recent_docs.append(doc_info)
+        
+        return {
+            "mongodb_status": mongo_status,
+            "document_count": doc_count,
+            "faiss_index_size": faiss_size,
+            "recent_documents": recent_docs
+        }
+    except Exception as e:
+        logger.error(f"Error checking system status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/")
+def read_root():
+  return {"message": "Welcome to the KYS RAG: Science Decoder Tool!"}
