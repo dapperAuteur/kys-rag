@@ -276,7 +276,7 @@ async def save_study(study: Study) -> Dict[str, Any]:
         logger.info(f"Embedding generated successfully: {len(vector)} dimensions")
         
         study_doc = StudyDocument(
-            **study.dict(),
+            **study.dict(exclude={"vector"}), # Exclude "vector" from .dict()
             vector=vector,
             created_at=datetime.utcnow()
         )
