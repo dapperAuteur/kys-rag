@@ -480,7 +480,44 @@ async def system_status():
     except Exception as e:
         logger.error(f"Error checking system status: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+@app.post("/test-embedding")
+async def test_embedding():
+    try:
+        # Test with a simple string
+        test_text = "This is a test sentence."
+        logger.info("Starting test embedding generation")
+        
+        # Try tokenization
+        inputs = tokenizer(
+            test_text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True
+        )
+        logger.info("Tokenization successful")
+        
+        # Try embedding
+        with torch.no_grad():
+            outputs = embedding_model(**inputs)
+            vector = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+            if len(vector.shape) == 0:
+                vector = vector.reshape(1)
+            vector = vector.tolist()
+        
+        return {
+            "success": True,
+            "vector_length": len(vector),
+            "sample_values": vector[:5]  # Return first 5 values of vector
+        }
+    except Exception as e:
+        logger.error(f"Test embedding failed: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+        
 @app.get("/")
 def read_root():
   return {"message": "Welcome to the KYS RAG: Science Decoder Tool!"}
