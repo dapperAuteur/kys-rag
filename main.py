@@ -283,11 +283,17 @@ async def save_study(study: Study) -> Dict[str, Any]:
             created_at=datetime.utcnow()
         )
         
+        logger.debug("Preparing to save study to MongoDB...")
         study_id = await db_manager.save_study(study_doc)
+        logger.debug(f"Saved study to MongoDB with ID: {study_id}")
+
         logger.info(f"Study saved successfully with ID: {study_id}")
         
+        logger.debug("Preparing to update FAISS index...")
         vector_array = np.array([vector], dtype="float32")
         faiss_manager.index.add(vector_array)
+        logger.debug("FAISS index updated successfully.")
+
         logger.info("FAISS index updated successfully")
         
         return {
