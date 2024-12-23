@@ -239,24 +239,45 @@ async def health_check() -> Dict[str, Any]:
 
 @app.post("/save-study")
 async def save_study(study: Study) -> Dict[str, Any]:
-    """Save a new study with its embedding vector"""
+    """Save a new study with its embedding vector
+    
+    This endpoint processes incoming study data, generates an embedding vector
+    for the study's text, and saves both the study and its vector to the database.
+    It also updates the FAISS index for future similarity searches.
+    
+    Args:
+        study: The incoming Study object containing title, text, topic, and discipline
+        
+    Returns:
+        Dict containing operation status and study ID
+        
+    Raises:
+        HTTPException: If any step of the save process fails
+    """
     try:
         logger.info(f"Processing save-study request for: {study.title}")
         
         # Generate embedding
+        logger.debug("Generating embedding vector")
         vector = await model_manager.generate_embedding(study.text)
         
-        # Create study document
+        # Create base dictionary from study, excluding any existing vector
+        study_data = study.dict()
+        study_data.pop('vector', None)  # Remove vector if it exists
+        
+        # Create study document with all fields
         study_doc = StudyDocument(
-            **study.dict(),
+            **study_data,
             vector=vector,
             created_at=datetime.utcnow()
         )
         
         # Save to MongoDB
+        logger.debug("Saving study to database")
         study_id = await db_manager.save_study(study_doc)
         
         # Update FAISS index
+        logger.debug("Updating FAISS index")
         vector_array = np.array([vector], dtype="float32")
         faiss_manager.index.add(vector_array)
         
@@ -266,6 +287,7 @@ async def save_study(study: Study) -> Dict[str, Any]:
             "message": "Study saved successfully",
             "id": study_id
         }
+        
     except Exception as e:
         error_msg = f"Failed to save study: {str(e)}"
         logger.error(error_msg)
