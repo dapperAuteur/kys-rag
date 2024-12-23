@@ -157,7 +157,7 @@ class FAISSManager:
 # Model Management with async support
 class ModelManager:
     def __init__(self):
-        """Initialize ML models and components"""
+        """Initialize ML models and components with validation"""
         self.tokenizer = None
         self.embedding_model = None
         self.qa_model = None
@@ -165,25 +165,46 @@ class ModelManager:
         self.initialize_models()
 
     def initialize_models(self) -> None:
-        """Initialize all required ML models"""
+        """Initialize all required ML models with detailed status checking"""
         try:
-            logger.info("Initializing ML models...")
-            self.tokenizer = AutoTokenizer.from_pretrained(Config.MODEL_NAME)
-            self.embedding_model = AutoModel.from_pretrained(Config.MODEL_NAME)
-            self.qa_model = AutoModelForQuestionAnswering.from_pretrained(Config.MODEL_NAME)
+            logger.info("Starting model initialization...")
             
-            # Set models to evaluation mode
+            # Initialize tokenizer with status check
+            logger.debug("Loading tokenizer...")
+            self.tokenizer = AutoTokenizer.from_pretrained(Config.MODEL_NAME)
+            if not self.tokenizer:
+                raise ValueError("Tokenizer initialization failed")
+            logger.info("Tokenizer loaded successfully")
+            
+            # Initialize embedding model with status check
+            logger.debug("Loading embedding model...")
+            self.embedding_model = AutoModel.from_pretrained(Config.MODEL_NAME)
+            if not self.embedding_model:
+                raise ValueError("Embedding model initialization failed")
             self.embedding_model.eval()
+            logger.info("Embedding model loaded successfully")
+            
+            # Initialize QA model with status check
+            logger.debug("Loading QA model...")
+            self.qa_model = AutoModelForQuestionAnswering.from_pretrained(Config.MODEL_NAME)
+            if not self.qa_model:
+                raise ValueError("QA model initialization failed")
             self.qa_model.eval()
-            logger.info("ML models initialized successfully")
+            logger.info("QA model loaded successfully")
+            
+            logger.info("All models initialized successfully")
         except Exception as e:
-            logger.error(f"Model initialization failed: {str(e)}")
+            logger.error(f"Model initialization failed: {str(e)}", exc_info=True)
             raise
 
     async def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for given text asynchronously"""
+        """Generate embedding for given text with enhanced error handling"""
+        if not text:
+            raise ValueError("Empty text provided for embedding generation")
+            
         def _generate() -> List[float]:
             try:
+                logger.debug(f"Tokenizing text of length {len(text)}...")
                 inputs = self.tokenizer(
                     text,
                     return_tensors="pt",
@@ -191,18 +212,29 @@ class ModelManager:
                     max_length=Config.MAX_SEQUENCE_LENGTH
                 )
                 
+                logger.debug("Generating embedding...")
                 with torch.no_grad():
                     outputs = self.embedding_model(**inputs)
                     vector = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
-                    return vector if isinstance(vector, list) else [vector]
+                    
+                if not isinstance(vector, list):
+                    vector = [vector]
+                    
+                logger.debug(f"Embedding generated successfully: {len(vector)} dimensions")
+                return vector
+                
             except Exception as e:
-                logger.error(f"Embedding generation failed: {str(e)}")
+                logger.error(f"Embedding generation failed in executor: {str(e)}", exc_info=True)
                 raise
 
-        return await asyncio.get_event_loop().run_in_executor(
-            self.executor,
-            _generate
-        )
+        try:
+            return await asyncio.get_event_loop().run_in_executor(
+                self.executor,
+                _generate
+            )
+        except Exception as e:
+            logger.error(f"Async embedding generation failed: {str(e)}", exc_info=True)
+            raise
 
 # Initialize FastAPI application
 app = FastAPI(
