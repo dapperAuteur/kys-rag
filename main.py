@@ -198,7 +198,7 @@ class ModelManager:
             raise
 
     async def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for given text with enhanced error handling"""
+        """Generate embedding for given text with enhanced logging."""
         if not text:
             raise ValueError("Empty text provided for embedding generation")
             
@@ -211,16 +211,14 @@ class ModelManager:
                     truncation=True,
                     max_length=Config.MAX_SEQUENCE_LENGTH
                 )
+                logger.debug(f"Tokenized inputs: {inputs}")
                 
                 logger.debug("Generating embedding...")
                 with torch.no_grad():
                     outputs = self.embedding_model(**inputs)
                     vector = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
                     
-                if not isinstance(vector, list):
-                    vector = [vector]
-                    
-                logger.debug(f"Embedding generated successfully: {len(vector)} dimensions")
+                logger.debug(f"Generated embedding: {vector[:10]}... (truncated for brevity)")
                 return vector
                 
             except Exception as e:
@@ -235,6 +233,7 @@ class ModelManager:
         except Exception as e:
             logger.error(f"Async embedding generation failed: {str(e)}", exc_info=True)
             raise
+
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -271,71 +270,23 @@ async def health_check() -> Dict[str, Any]:
 
 @app.post("/save-study")
 async def save_study(study: Study) -> Dict[str, Any]:
-    """Save a new study with its embedding vector
-    
-    This endpoint carefully tracks each step of the save process with detailed logging,
-    making it easier to identify where any failures might occur.
-    """
     try:
-        # Step 1: Initial validation
         logger.info(f"Processing save-study request for: {study.title}")
-        logger.debug(f"Study content length: {len(study.text)} characters")
+        vector = await model_manager.generate_embedding(study.text)
+        logger.info(f"Embedding generated successfully: {len(vector)} dimensions")
         
-        # Step 2: Generate embedding with detailed error catching
-        try:
-            logger.info("Starting embedding generation...")
-            vector = await model_manager.generate_embedding(study.text)
-            logger.info(f"Embedding generated successfully: {len(vector)} dimensions")
-        except Exception as embed_error:
-            logger.error(f"Embedding generation failed: {str(embed_error)}")
-            logger.error(f"Model state: Tokenizer={bool(model_manager.tokenizer)}, "
-                        f"Embedding Model={bool(model_manager.embedding_model)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Embedding generation failed: {str(embed_error)}"
-            )
-
-        # Step 3: Prepare study document
-        try:
-            logger.info("Preparing study document...")
-            study_data = study.dict()
-            study_data.pop('vector', None)
-            
-            study_doc = StudyDocument(
-                **study_data,
-                vector=vector,
-                created_at=datetime.utcnow()
-            )
-            logger.info("Study document prepared successfully")
-        except Exception as doc_error:
-            logger.error(f"Document preparation failed: {str(doc_error)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Document preparation failed: {str(doc_error)}"
-            )
-
-        # Step 4: Save to MongoDB
-        try:
-            logger.info("Saving to database...")
-            study_id = await db_manager.save_study(study_doc)
-            logger.info(f"Database save successful with ID: {study_id}")
-        except Exception as db_error:
-            logger.error(f"Database save failed: {str(db_error)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database save failed: {str(db_error)}"
-            )
-
-        # Step 5: Update FAISS index
-        try:
-            logger.info("Updating FAISS index...")
-            vector_array = np.array([vector], dtype="float32")
-            faiss_manager.index.add(vector_array)
-            logger.info("FAISS index updated successfully")
-        except Exception as faiss_error:
-            logger.error(f"FAISS update failed: {str(faiss_error)}")
-            # Note: We don't raise here since the study is already saved
-            # but we should log the error and include it in the response
+        study_doc = StudyDocument(
+            **study.dict(),
+            vector=vector,
+            created_at=datetime.utcnow()
+        )
+        
+        study_id = await db_manager.save_study(study_doc)
+        logger.info(f"Study saved successfully with ID: {study_id}")
+        
+        vector_array = np.array([vector], dtype="float32")
+        faiss_manager.index.add(vector_array)
+        logger.info("FAISS index updated successfully")
         
         return {
             "status": "success",
@@ -343,12 +294,13 @@ async def save_study(study: Study) -> Dict[str, Any]:
             "id": study_id
         }
         
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions we created
+    except DatabaseError as db_error:
+        logger.error(f"Database error: {str(db_error)}")
+        raise HTTPException(status_code=500, detail=str(db_error))
     except Exception as e:
-        error_msg = f"Unexpected error in save_study: {str(e)}"
-        logger.error(error_msg, exc_info=True)  # Include full stack trace
-        raise HTTPException(status_code=500, detail=error_msg)
+        logger.error(f"Unexpected error in save_study: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
 
 @app.post("/search-studies")
 async def search_studies(query: Dict[str, str] = Body(...)) -> Dict[str, Any]:
