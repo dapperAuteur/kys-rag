@@ -231,93 +231,54 @@ async def check_documents():
 
 @app.post("/save-study")
 async def save_study(study: Study):
+    logger.info(f"Starting save operation for study: {study.title}")
+    
     try:
-        logger.info(f"Starting save operation for study: {study.title}")
-        
+        # Step 1: Basic validation
         if studies_collection is None:
-            logger.error("Database connection not available")
             raise HTTPException(status_code=503, detail="Database connection not available")
-        
-        # Step 1: Tokenize text
-        logger.info("Tokenizing text...")
-        try:
-            inputs = tokenizer(
-                study.text,
-                return_tensors="pt",
-                truncation=True,
-                max_length=512,
-                padding=True
-            )
-            logger.info("Text tokenized successfully")
-        except Exception as e:
-            logger.error(f"Tokenization failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Tokenization failed: {str(e)}")
-        
+            
         # Step 2: Generate embedding
+        logger.info("Tokenizing text...")
+        inputs = tokenizer(
+            study.text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512
+        )
+        
         logger.info("Generating embedding...")
-        try:
-            with torch.no_grad():
-                outputs = embedding_model(**inputs)
-                hidden_states = outputs.last_hidden_state
-                logger.info(f"Hidden states shape: {hidden_states.shape}")
-                
-                # Mean pooling
-                attention_mask = inputs['attention_mask']
-                mask = attention_mask.unsqueeze(-1).expand(hidden_states.size()).float()
-                masked_hidden = hidden_states * mask
-                summed = torch.sum(masked_hidden, dim=1)
-                count = torch.clamp(mask.sum(1), min=1e-9)
-                vector = (summed / count).squeeze().numpy()
-                
-                if len(vector.shape) == 0:
-                    vector = vector.reshape(1)
-                vector = vector.tolist()
-                
-                logger.info(f"Embedding generated successfully, shape: {len(vector)}")
-        except Exception as e:
-            logger.error(f"Embedding generation failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Embedding generation failed: {str(e)}")
+        with torch.no_grad():
+            outputs = embedding_model(**inputs)
+            vector = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
+            
+        logger.info(f"Embedding generated, length: {len(vector)}")
         
-        # Step 3: Prepare and validate document
-        logger.info("Preparing document...")
-        try:
-            study_dict = study.dict()
-            study_dict["vector"] = vector
-            logger.info("Document prepared successfully")
-        except Exception as e:
-            logger.error(f"Document preparation failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Document preparation failed: {str(e)}")
+        # Step 3: Save to MongoDB
+        study_dict = study.dict()
+        study_dict["vector"] = vector
+        result = studies_collection.insert_one(study_dict)
         
-        # Step 4: Save to MongoDB
-        logger.info("Saving to MongoDB...")
-        try:
-            result = studies_collection.insert_one(study_dict)
-            logger.info(f"Saved to MongoDB with ID: {result.inserted_id}")
-        except Exception as e:
-            logger.error(f"MongoDB save failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"MongoDB save failed: {str(e)}")
+        # Step 4: Update FAISS
+        vector_array = np.array([vector], dtype="float32")
+        if len(vector_array.shape) == 1:
+            vector_array = vector_array.reshape(1, -1)
+        index.add(vector_array)
         
-        # Step 5: Update FAISS index
-        logger.info("Updating FAISS index...")
-        try:
-            vector_array = np.array([vector], dtype="float32")
-            index.add(vector_array)
-            logger.info(f"FAISS index updated, now contains {index.ntotal} vectors")
-        except Exception as e:
-            logger.error(f"FAISS update failed: {str(e)}")
-            # Don't raise here - we've already saved to MongoDB
-            logger.warning("Document saved to MongoDB but FAISS index update failed")
+        logger.info("Study saved successfully")
         
         return {
+            "status": "success",
             "message": "Study saved successfully",
-            "id": str(result.inserted_id),
-            "vector_length": len(vector),
-            "faiss_index_size": index.ntotal
+            "id": str(result.inserted_id)
         }
         
     except Exception as e:
-        logger.error(f"Unexpected error in save_study: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error saving study: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
     
 @app.get("/get-studies/{topic}")
 async def get_studies_by_topic(topic: str):
