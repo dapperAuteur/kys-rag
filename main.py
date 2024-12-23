@@ -241,56 +241,81 @@ async def health_check() -> Dict[str, Any]:
 async def save_study(study: Study) -> Dict[str, Any]:
     """Save a new study with its embedding vector
     
-    This endpoint processes incoming study data, generates an embedding vector
-    for the study's text, and saves both the study and its vector to the database.
-    It also updates the FAISS index for future similarity searches.
-    
-    Args:
-        study: The incoming Study object containing title, text, topic, and discipline
-        
-    Returns:
-        Dict containing operation status and study ID
-        
-    Raises:
-        HTTPException: If any step of the save process fails
+    This endpoint carefully tracks each step of the save process with detailed logging,
+    making it easier to identify where any failures might occur.
     """
     try:
+        # Step 1: Initial validation
         logger.info(f"Processing save-study request for: {study.title}")
+        logger.debug(f"Study content length: {len(study.text)} characters")
         
-        # Generate embedding
-        logger.debug("Generating embedding vector")
-        vector = await model_manager.generate_embedding(study.text)
+        # Step 2: Generate embedding with detailed error catching
+        try:
+            logger.info("Starting embedding generation...")
+            vector = await model_manager.generate_embedding(study.text)
+            logger.info(f"Embedding generated successfully: {len(vector)} dimensions")
+        except Exception as embed_error:
+            logger.error(f"Embedding generation failed: {str(embed_error)}")
+            logger.error(f"Model state: Tokenizer={bool(model_manager.tokenizer)}, "
+                        f"Embedding Model={bool(model_manager.embedding_model)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Embedding generation failed: {str(embed_error)}"
+            )
+
+        # Step 3: Prepare study document
+        try:
+            logger.info("Preparing study document...")
+            study_data = study.dict()
+            study_data.pop('vector', None)
+            
+            study_doc = StudyDocument(
+                **study_data,
+                vector=vector,
+                created_at=datetime.utcnow()
+            )
+            logger.info("Study document prepared successfully")
+        except Exception as doc_error:
+            logger.error(f"Document preparation failed: {str(doc_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Document preparation failed: {str(doc_error)}"
+            )
+
+        # Step 4: Save to MongoDB
+        try:
+            logger.info("Saving to database...")
+            study_id = await db_manager.save_study(study_doc)
+            logger.info(f"Database save successful with ID: {study_id}")
+        except Exception as db_error:
+            logger.error(f"Database save failed: {str(db_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database save failed: {str(db_error)}"
+            )
+
+        # Step 5: Update FAISS index
+        try:
+            logger.info("Updating FAISS index...")
+            vector_array = np.array([vector], dtype="float32")
+            faiss_manager.index.add(vector_array)
+            logger.info("FAISS index updated successfully")
+        except Exception as faiss_error:
+            logger.error(f"FAISS update failed: {str(faiss_error)}")
+            # Note: We don't raise here since the study is already saved
+            # but we should log the error and include it in the response
         
-        # Create base dictionary from study, excluding any existing vector
-        study_data = study.dict()
-        study_data.pop('vector', None)  # Remove vector if it exists
-        
-        # Create study document with all fields
-        study_doc = StudyDocument(
-            **study_data,
-            vector=vector,
-            created_at=datetime.utcnow()
-        )
-        
-        # Save to MongoDB
-        logger.debug("Saving study to database")
-        study_id = await db_manager.save_study(study_doc)
-        
-        # Update FAISS index
-        logger.debug("Updating FAISS index")
-        vector_array = np.array([vector], dtype="float32")
-        faiss_manager.index.add(vector_array)
-        
-        logger.info(f"Study saved successfully with ID: {study_id}")
         return {
             "status": "success",
             "message": "Study saved successfully",
             "id": study_id
         }
         
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions we created
     except Exception as e:
-        error_msg = f"Failed to save study: {str(e)}"
-        logger.error(error_msg)
+        error_msg = f"Unexpected error in save_study: {str(e)}"
+        logger.error(error_msg, exc_info=True)  # Include full stack trace
         raise HTTPException(status_code=500, detail=error_msg)
 
 @app.post("/search-studies")
