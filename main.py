@@ -312,6 +312,10 @@ async def answer_question(request: QuestionRequest):
         logger.error(f"Question answering failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/")
+def read_root():
+  return {"message": "Welcome to the KYS RAG: Science Decoder Tool!"}
+
 # Startup event to load existing vectors
 @app.on_event("startup")
 async def startup_event():
