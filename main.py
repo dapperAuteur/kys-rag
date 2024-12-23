@@ -54,9 +54,9 @@ class DatabaseManager:
         self.client = None
         self.db = None
         self.studies_collection = None
-        self.initialize_connection()
+        self._initialize_connection()
 
-    def initialize_connection(self):
+    def _initialize_connection(self):
         """Initialize MongoDB connection with fallback to local instance."""
         try:
             # Try Atlas connection first
@@ -75,6 +75,41 @@ class DatabaseManager:
 
         self.db = self.client["science_decoder"]
         self.studies_collection = self.db["studies"]
+
+    def get_all_vectors(self):
+        """Retrieve all vectors from the database synchronously."""
+        vectors = []
+        try:
+            # Use regular for loop since we're using synchronous PyMongo
+            for study in self.studies_collection.find():
+                if "vector" in study and len(study["vector"]) == Config.EMBEDDING_DIM:
+                    vector = np.array(study["vector"], dtype="float32").reshape(1, -1)
+                    vectors.append(vector)
+            return vectors
+        except Exception as e:
+            logger.error(f"Error retrieving vectors: {str(e)}")
+            raise
+# FAISS Index Management
+class FAISSManager:
+    def __init__(self):
+        self.index = faiss.IndexFlatL2(Config.EMBEDDING_DIM)
+    def load_vectors_from_db(self, db_manager: DatabaseManager):
+        """Load existing vectors from MongoDB into FAISS index."""
+        logger.info("Loading vectors from MongoDB into FAISS index...")
+        try:
+            vectors = db_manager.get_all_vectors()
+            if vectors:
+                vectors_array = np.vstack(vectors)
+                self.index.add(vectors_array)
+                logger.info(f"Added {len(vectors)} vectors to FAISS index")
+            else:
+                logger.info("No vectors found in database")
+        except Exception as e:
+            logger.error(f"Error loading vectors: {str(e)}")
+            raise
+    def search(self, query_vector: np.ndarray, k: int = 5) -> tuple:
+        """Search for similar vectors in the index."""
+        return self.index.search(query_vector.astype("float32"), k)
 
 # Model Management
 class ModelManager:
@@ -282,7 +317,8 @@ async def answer_question(request: QuestionRequest):
 async def startup_event():
     """Initialize system components on startup."""
     try:
-        await faiss_manager.load_vectors_from_db(db_manager)
+        # Note: This is now synchronous but runs in startup
+        faiss_manager.load_vectors_from_db(db_manager)
         logger.info("Startup completed successfully")
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}")
