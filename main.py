@@ -155,9 +155,10 @@ class FAISSManager:
             raise
 
 # Model Management with async support
+# Modify ModelManager to force CPU usage
 class ModelManager:
     def __init__(self):
-        """Initialize ML models and components with validation"""
+        """Initialize ML models and components."""
         self.tokenizer = None
         self.embedding_model = None
         self.qa_model = None
@@ -165,43 +166,39 @@ class ModelManager:
         self.initialize_models()
 
     def initialize_models(self) -> None:
-        """Initialize all required ML models with detailed status checking"""
+        """Initialize all required ML models."""
         try:
             logger.info("Starting model initialization...")
-            
-            # Initialize tokenizer with status check
+
+            # Load tokenizer
             logger.debug("Loading tokenizer...")
             self.tokenizer = AutoTokenizer.from_pretrained(Config.MODEL_NAME)
-            if not self.tokenizer:
-                raise ValueError("Tokenizer initialization failed")
-            logger.info("Tokenizer loaded successfully")
-            
-            # Initialize embedding model with status check
+            logger.info("Tokenizer loaded successfully.")
+
+            # Load embedding model and force CPU usage
             logger.debug("Loading embedding model...")
             self.embedding_model = AutoModel.from_pretrained(Config.MODEL_NAME)
-            if not self.embedding_model:
-                raise ValueError("Embedding model initialization failed")
+            self.embedding_model.to(torch.device("cpu"))  # Force CPU usage
             self.embedding_model.eval()
-            logger.info("Embedding model loaded successfully")
-            
-            # Initialize QA model with status check
+            logger.info("Embedding model loaded successfully.")
+
+            # Load QA model and force CPU usage
             logger.debug("Loading QA model...")
             self.qa_model = AutoModelForQuestionAnswering.from_pretrained(Config.MODEL_NAME)
-            if not self.qa_model:
-                raise ValueError("QA model initialization failed")
+            self.qa_model.to(torch.device("cpu"))  # Force CPU usage
             self.qa_model.eval()
-            logger.info("QA model loaded successfully")
-            
-            logger.info("All models initialized successfully")
+            logger.info("QA model loaded successfully.")
+
+            logger.info("All models initialized successfully.")
         except Exception as e:
             logger.error(f"Model initialization failed: {str(e)}", exc_info=True)
             raise
 
     async def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding for given text with enhanced logging."""
+        """Generate embedding for a given text."""
         if not text:
-            raise ValueError("Empty text provided for embedding generation")
-            
+            raise ValueError("Empty text provided for embedding generation.")
+        
         def _generate() -> List[float]:
             try:
                 logger.debug(f"Tokenizing text of length {len(text)}...")
@@ -210,29 +207,25 @@ class ModelManager:
                     return_tensors="pt",
                     truncation=True,
                     max_length=Config.MAX_SEQUENCE_LENGTH
-                )
-                logger.debug(f"Tokenized inputs: {inputs}")
+                ).to(torch.device("cpu"))  # Ensure input tensors are on CPU
                 
+                logger.debug(f"Tokenized inputs: {inputs}")
                 logger.debug("Generating embedding...")
+                
                 with torch.no_grad():
                     outputs = self.embedding_model(**inputs)
                     vector = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
-                    
+                
                 logger.debug(f"Generated embedding: {vector[:10]}... (truncated for brevity)")
                 return vector
-                
             except Exception as e:
-                logger.error(f"Embedding generation failed in executor: {str(e)}", exc_info=True)
+                logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
                 raise
-
-        try:
-            return await asyncio.get_event_loop().run_in_executor(
-                self.executor,
-                _generate
-            )
-        except Exception as e:
-            logger.error(f"Async embedding generation failed: {str(e)}", exc_info=True)
-            raise
+        
+        return await asyncio.get_event_loop().run_in_executor(
+            self.executor,
+            _generate
+        )
 
 
 # Initialize FastAPI application
@@ -383,6 +376,32 @@ async def answer_question(request: QuestionRequest) -> Dict[str, str]:
     except Exception as e:
         error_msg = f"Question answering failed: {str(e)}"
         logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    
+@app.post("/test-embedding")
+async def test_embedding(request: Dict[str, str] = Body(...)) -> Dict[str, Any]:
+    """
+    Test embedding generation in isolation with a given text.
+    """
+    try:
+        text = request.get("text")
+        if not text:
+            raise HTTPException(status_code=400, detail="The 'text' field is required.")
+        
+        logger.info(f"Testing embedding generation for text: {text}")
+        
+        # Generate embedding
+        embedding = await model_manager.generate_embedding(text)
+        logger.debug(f"Generated embedding: {embedding[:10]}... (truncated for brevity)")
+        
+        return {
+            "status": "success",
+            "embedding_preview": embedding[:10],  # First 10 values for brevity
+            "dimensions": len(embedding)
+        }
+    except Exception as e:
+        error_msg = f"Error generating embedding: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=error_msg)
 
 @app.get("/")
