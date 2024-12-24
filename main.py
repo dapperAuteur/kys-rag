@@ -1,184 +1,85 @@
+from fastapi import FastAPI, HTTPException, Depends
+from contextlib import asynccontextmanager
 import logging
-from datetime import datetime
-from typing import List, Dict, Any
+from typing import List
+from models import Study, SearchQuery, SearchResponse, StatusResponse
+from services import study_service
+from database import database
+from config import get_settings
 
-from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel
-from motor.motor_asyncio import AsyncIOMotorClient
-import torch
-from transformers import AutoTokenizer, AutoModel
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging
+logging.basicConfig(level=get_settings().LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
-app = FastAPI()
-
-# MongoDB connection using Motor
-client = AsyncIOMotorClient("mongodb://localhost:27017/")
-db = client["science_decoder"]
-studies_collection = db["studies"]
-
-# Hugging Face model setup
-logger.info("Initializing models...")
-
-# Use CPU explicitly
-device = torch.device("cpu")
-logger.info(f"Using device: {device}")
-
-tokenizer = AutoTokenizer.from_pretrained("allenai/scibert_scivocab_uncased")
-model = AutoModel.from_pretrained("allenai/scibert_scivocab_uncased")
-model.to(device)  # Move the model to CPU
-model.eval()
-logger.info("Model loaded successfully.")
-
-# Pydantic models
-class Study(BaseModel):
-    title: str
-    text: str
-    topic: str
-    discipline: str
-
-class EmbeddingTestRequest(BaseModel):
-    text: str
-
-@app.on_event("startup")
-async def startup_event():
-    """Test MongoDB connection on startup."""
+# Application lifecycle management
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle - startup and shutdown"""
     try:
-        await studies_collection.database.command("ping")
-        logger.info("Connected to MongoDB successfully.")
+        # Startup
+        logger.info("Starting application...")
+        await database.connect()
+        yield
+    finally:
+        # Shutdown
+        logger.info("Shutting down application...")
+        await database.close()
+
+# Create FastAPI application
+app = FastAPI(
+    title="Science Decoder",
+    description="Scientific paper search and analysis API",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+@app.get("/", response_model=StatusResponse)
+async def read_root():
+    """Root endpoint - application status"""
+    return StatusResponse(
+        status="ok",
+        message="Welcome to the Science Decoder API!",
+        details={"version": "2.0.0"}
+    )
+
+@app.post("/studies/", response_model=StatusResponse)
+async def create_study(study: Study):
+    """Create a new study"""
+    try:
+        study_id = await study_service.save_study(study)
+        return StatusResponse(
+            status="success",
+            message="Study created successfully",
+            details={"id": study_id}
+        )
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        logger.error(f"Error creating study: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/studies/{study_id}", response_model=Study)
+async def get_study(study_id: str):
+    """Retrieve a study by ID"""
+    try:
+        study = await study_service.get_study_by_id(study_id)
+        if not study:
+            raise HTTPException(status_code=404, detail="Study not found")
+        return study
+    except HTTPException:
         raise
-
-
-@app.get("/")
-def read_root():
-    """Welcome route."""
-    return {"message": "Welcome to the Science Decoder Tool!"}
-
-
-@app.post("/save-study")
-async def save_study(study: Study) -> Dict[str, Any]:
-    """Save a new study to MongoDB."""
-    try:
-        logger.info(f"Processing save-study request for: {study.title}")
-        
-        # Generate embedding
-        embedding = await generate_embedding(study.text)
-        logger.info(f"Embedding generated successfully: {len(embedding)} dimensions")
-        
-        # Add study to MongoDB
-        study_doc = {
-            "title": study.title,
-            "text": study.text,
-            "topic": study.topic,
-            "discipline": study.discipline,
-            "vector": embedding,
-            "created_at": datetime.utcnow()
-        }
-        result = await studies_collection.insert_one(study_doc)
-        logger.info(f"Study saved successfully with ID: {result.inserted_id}")
-        
-        return {
-            "status": "success",
-            "message": "Study saved successfully",
-            "id": str(result.inserted_id)
-        }
     except Exception as e:
-        logger.error(f"Error saving study: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error saving study: {str(e)}")
+        logger.error(f"Error retrieving study: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.get("/get-studies/{topic}")
-async def get_studies_by_topic(topic: str):
-    """Retrieve studies by topic."""
+@app.post("/search/", response_model=List[SearchResponse])
+async def search_studies(query: SearchQuery):
+    """Search for similar studies"""
     try:
-        cursor = studies_collection.find({"topic": topic})
-        studies = []
-        async for study in cursor:
-            study["_id"] = str(study["_id"])  # Convert ObjectId to string
-            studies.append(study)
-        return {"studies": studies}
+        results = await study_service.search_similar_studies(query)
+        return results
     except Exception as e:
-        logger.error(f"Error retrieving studies: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error retrieving studies.")
+        logger.error(f"Error searching studies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.get("/search-studies")
-async def search_studies(topic: str = None, discipline: str = None):
-    """Search studies by topic and/or discipline."""
-    try:
-        query = {}
-        if topic:
-            query["topic"] = topic
-        if discipline:
-            query["discipline"] = discipline
-        
-        cursor = studies_collection.find(query)
-        studies = []
-        async for study in cursor:
-            study["_id"] = str(study["_id"])  # Convert ObjectId to string
-            studies.append(study)
-        return {"studies": studies}
-    except Exception as e:
-        logger.error(f"Error searching studies: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error searching studies.")
-
-
-@app.post("/test-embedding")
-async def test_embedding(request: EmbeddingTestRequest) -> Dict[str, Any]:
-    """Test embedding generation in isolation."""
-    try:
-        text = request.text
-        if not text:
-            raise HTTPException(status_code=400, detail="The 'text' field is required.")
-        
-        logger.info(f"Testing embedding generation for text: {text}")
-        
-        # Generate embedding
-        embedding = await generate_embedding(text)
-        logger.debug(f"Generated embedding: {embedding[:10]}... (truncated for brevity)")
-        
-        return {
-            "status": "success",
-            "embedding_preview": embedding[:10],  # First 10 values for brevity
-            "dimensions": len(embedding)
-        }
-    except Exception as e:
-        error_msg = f"Error generating embedding: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        raise HTTPException(status_code=500, detail=error_msg)
-
-
-async def generate_embedding(text: str) -> List[float]:
-    """Generate embedding for a given text."""
-    if not text:
-        raise ValueError("Empty text provided for embedding generation.")
-    
-    def _generate() -> List[float]:
-        try:
-            logger.debug(f"Tokenizing text of length {len(text)}...")
-            inputs = tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                max_length=512
-            ).to(device)  # Ensure input tensors are on the same device as the model
-            
-            logger.debug(f"Tokenized inputs: {inputs}")
-            logger.debug("Generating embedding...")
-            
-            with torch.no_grad():
-                outputs = model(**inputs)
-                vector = outputs.last_hidden_state.mean(dim=1).squeeze().tolist()
-            
-            logger.debug(f"Generated embedding: {vector[:10]}... (truncated for brevity)")
-            return vector
-        except Exception as e:
-            logger.error(f"Embedding generation failed: {str(e)}", exc_info=True)
-            raise
-    
-    return await asyncio.get_event_loop().run_in_executor(None, _generate)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
