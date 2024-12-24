@@ -37,8 +37,9 @@ class StudyService:
     async def save_study(self, study: Study) -> str:
         """Save study with generated vector embedding"""
         try:
-            # Generate vector embedding
-            study.vector = await self.generate_embedding(study.text)
+            # Generate vector embedding if not provided
+            if not study.vector:
+                study.vector = await self.generate_embedding(study.text)
             
             # Insert into database
             result = await database.db.studies.insert_one(
@@ -55,35 +56,24 @@ class StudyService:
     ) -> List[SearchResponse]:
         """Search for similar studies using vector similarity"""
         try:
+            # Generate query vector
             query_vector = await self.generate_embedding(query.query_text)
             
-            pipeline = [
-                {
-                    "$search": {
-                        "index": "vector_index",
-                        "knnBeta": {
-                            "vector": query_vector,
-                            "path": "vector",
-                            "k": query.limit
-                        }
-                    }
-                },
-                {
-                    "$project": {
-                        "vector": 0,  # Exclude vector from results
-                        "score": {"$meta": "searchScore"}
-                    }
-                }
-            ]
-
-            results = []
-            async for doc in database.db.studies.aggregate(pipeline):
+            # Perform similarity search
+            results = await database.vector_similarity_search(
+                query_vector=query_vector,
+                limit=query.limit
+            )
+            
+            # Convert results to response objects
+            response_results = []
+            for doc in results:
                 score = doc.pop("score", 0.0)
                 if score >= query.min_score:
                     study = Study(**doc)
-                    results.append(SearchResponse(study=study, score=score))
+                    response_results.append(SearchResponse(study=study, score=score))
             
-            return results
+            return response_results
         except Exception as e:
             logger.error(f"Error searching studies: {e}")
             raise
