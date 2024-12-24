@@ -1,9 +1,10 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import logging
-from config import get_settings
-import numpy as np
 from datetime import datetime
+from config import get_settings
+from pymongo.errors import OperationFailure
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -44,26 +45,62 @@ class DatabaseManager:
     async def setup_indexes(self) -> None:
         """Create necessary database indexes for vectors and metadata"""
         try:
-            # Vector search index setup
-            try:
-                logger.info("Attempting to create vector search index...")
-                await self.db.studies.create_index(
-                    [("vector", "vector")],
-                    name="vector_index",
-                    vectorSearchOptions={
-                        "numDimensions": self.settings.VECTOR_DIMENSIONS,
-                        "similarity": "cosine"
-                    }
-                )
-                self.vector_search_enabled = True
-                logger.info("Vector search index created successfully")
-            except Exception as e:
-                logger.warning(f"Vector search not available: {e}")
-                logger.info("Creating regular indexes for basic vector storage...")
-                await self.db.studies.create_index("vector")
-                self.vector_search_enabled = False
+            await self._setup_vector_index()
+            await self._setup_text_index()
+            await self._setup_metadata_indexes()
             
-            # Create text search index for metadata
+            logger.info("All indexes created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create indexes: {e}")
+            raise
+
+    async def _setup_vector_index(self) -> None:
+        """Setup vector search index with fallback"""
+        try:
+            logger.info("Attempting to create vector search index...")
+            await self.db.studies.create_index(
+                [("vector", "vector")],
+                name="vector_index",
+                vectorSearchOptions={
+                    "numDimensions": self.settings.VECTOR_DIMENSIONS,
+                    "similarity": "cosine"
+                }
+            )
+            self.vector_search_enabled = True
+            logger.info("Vector search index created successfully")
+        except OperationFailure as e:
+            if "disallowed in this Atlas tier" in str(e):
+                logger.warning("Vector search not available in current Atlas tier")
+                await self._setup_fallback_vector_index()
+            else:
+                raise
+
+    async def _setup_fallback_vector_index(self) -> None:
+        """Setup basic vector index when vector search is not available"""
+        try:
+            logger.info("Creating regular index for basic vector storage...")
+            await self.db.studies.create_index([("vector", 1)], name="basic_vector_index")
+            self.vector_search_enabled = False
+            logger.info("Basic vector index created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create basic vector index: {e}")
+            raise
+
+    async def _setup_text_index(self) -> None:
+        """Setup text search index with conflict handling"""
+        try:
+            # Check existing indexes
+            existing_indexes = await self.db.studies.list_indexes().to_list(None)
+            has_text_index = any(
+                'text' in idx.get('name', '') or 
+                idx.get('textIndexVersion') is not None 
+                for idx in existing_indexes
+            )
+            
+            if has_text_index:
+                logger.info("Text index already exists, skipping creation")
+                return
+            
             await self.db.studies.create_index(
                 [
                     ("title", "text"),
@@ -71,36 +108,56 @@ class DatabaseManager:
                     ("topic", "text"),
                     ("keywords", "text")
                 ],
-                name="text_search_index"
+                name="text_search_index",
+                weights={
+                    "title": 10,
+                    "keywords": 5,
+                    "topic": 3,
+                    "text": 1
+                }
             )
+            logger.info("Text search index created successfully")
+        except OperationFailure as e:
+            if "equivalent index already exists" in str(e):
+                logger.info("Equivalent text index already exists, using existing index")
+            else:
+                raise
+
+    async def _setup_metadata_indexes(self) -> None:
+        """Setup indexes for metadata fields"""
+        try:
+            index_specs = [
+                ([("publication_date", -1)], {}),
+                ([("citation_count", -1)], {}),
+                ([("doi", 1)], {"unique": True, "sparse": True}),
+                ([("created_at", -1)], {}),
+                ([("discipline", 1)], {}),
+                ([("authors.name", 1)], {})
+            ]
             
-            # Create indexes for common metadata queries
-            await self.db.studies.create_index([("publication_date", -1)])
-            await self.db.studies.create_index([("citation_count", -1)])
-            await self.db.studies.create_index([("doi", 1)], unique=True, sparse=True)
-            await self.db.studies.create_index([("created_at", -1)])
-            await self.db.studies.create_index([("discipline", 1)])
-            await self.db.studies.create_index([("authors.name", 1)])
+            for fields, options in index_specs:
+                try:
+                    await self.db.studies.create_index(fields, **options)
+                except OperationFailure as e:
+                    if "equivalent index already exists" not in str(e):
+                        raise
             
-            logger.info("All indexes created successfully")
+            logger.info("Metadata indexes created successfully")
         except Exception as e:
-            logger.error(f"Failed to create indexes: {e}")
+            logger.error(f"Failed to create metadata indexes: {e}")
             raise
 
     async def vector_similarity_search(
         self,
         query_vector: List[float],
         limit: int = 5,
-        metadata_filters: Optional[dict] = None
-    ) -> List[dict]:
-        """
-        Perform vector similarity search with metadata filtering
-        """
+        metadata_filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """Perform vector similarity search with metadata filtering"""
         try:
             pipeline = []
             
             if self.vector_search_enabled:
-                # Use native vector search if available
                 pipeline.append({
                     "$search": {
                         "index": "vector_index",
@@ -146,11 +203,9 @@ class DatabaseManager:
                     {"$sort": {"similarity": -1}}
                 ])
             
-            # Apply metadata filters if provided
             if metadata_filters:
                 pipeline.append({"$match": metadata_filters})
             
-            # Final stages
             pipeline.extend([
                 {"$limit": limit},
                 {
@@ -196,4 +251,5 @@ class DatabaseManager:
             self.client.close()
             logger.info("Database connection closed")
 
+# Single instance for the application
 database = DatabaseManager()
