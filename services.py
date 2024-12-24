@@ -41,10 +41,20 @@ class StudyService:
             if not study.vector:
                 study.vector = await self.generate_embedding(study.text)
             
+            # Prepare the document, excluding _id if it exists
+            document = study.model_dump(by_alias=True, exclude={"id"})  # Ensure "id" maps to "_id" and is excluded
+
             # Insert into database
-            result = await database.db.studies.insert_one(
-                study.model_dump(by_alias=True)
-            )
+            result = await database.db.studies.insert_one(document)
+
+            # Attach the generated _id to the study object (optional)
+            # study.id = str(result.inserted_id)  # Update the Study object with the new ID
+
+            # Log the generated _id to confirm it exists
+            logger.info(f"Study saved successfully with ID result.inserted_id: {result.inserted_id}")
+            logger.info(f"Study saved successfully with ID study.id: {study.id}")
+
+            # Return the _id as a string
             return str(result.inserted_id)
         except Exception as e:
             logger.error(f"Error saving study: {e}")
