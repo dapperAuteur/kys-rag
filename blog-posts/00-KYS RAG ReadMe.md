@@ -1,7 +1,3 @@
-Here’s a revised **project description** and a **README.md** file based on the updated approach.
-
----
-
 ### **Project Description**
 
 This project is a **Retrieval-Augmented Generation (RAG) Tool** designed to help users better understand scientific studies and avoid misinformation propagated by clickbait or hyperbolic posts. The tool uses **free and open-source technologies** to provide insights, detect misinformation, and promote critical thinking when analyzing scientific claims.
@@ -173,7 +169,9 @@ Contributions are welcome! Please open an issue or submit a pull request for imp
 ---
 
 ## Contact
-For questions or inquiries, reach out at **your-email@example.com**.
+For questions or inquiries, reach out at **a@awews.com**.
+Chat with Brand Anthony McDonald in real-time by visiting
+https://i.brandanthonymcdonald.com/portfolio
 ```
 
 This README.md provides a comprehensive overview of the project, technical stack, features, deployment, and strengths/weaknesses for potential contributors and employers. Let me know if you'd like to refine or expand any sections!
