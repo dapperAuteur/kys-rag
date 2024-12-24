@@ -1,40 +1,37 @@
 import pytest
-from httpx import AsyncClient
-from typing import AsyncGenerator
-import pytest_asyncio
-from main import app
+from fastapi.testclient import TestClient
+from main import app  # Import the app instance from main.py
 from database import database
 from models import Study, SearchQuery
 from bson import ObjectId
 
-@pytest_asyncio.fixture
-async def test_client() -> AsyncGenerator[AsyncClient, None]:
-    """Create test client"""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+@pytest.fixture(scope="module")
+def test_client():
+    """Fixture to return a TestClient"""
+    with TestClient(app) as client:
         yield client
 
-@pytest_asyncio.fixture(autouse=True)
-async def setup_teardown():
+@pytest.fixture(autouse=True)
+def setup_teardown():
     """Setup and teardown for each test"""
     # Setup
-    await database.connect()
-    # Clear test database
-    await database.db.studies.delete_many({})
-    
-    yield
-    
-    # Teardown
-    await database.db.studies.delete_many({})
-    await database.close()
+    database.connect()
+    database.db.studies.delete_many({})
 
-async def test_root(test_client):
+    yield
+
+    # Teardown
+    database.db.studies.delete_many({})
+    database.close()
+
+def test_root(test_client):
     """Test root endpoint"""
-    response = await test_client.get("/")
+    response = test_client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
 
-async def test_create_and_retrieve_study(test_client):
+def test_create_and_retrieve_study(test_client):
     """Test study creation and retrieval"""
     # Create study
     study_data = {
@@ -44,19 +41,19 @@ async def test_create_and_retrieve_study(test_client):
         "discipline": "Computer Science"
     }
     
-    response = await test_client.post("/studies/", json=study_data)
+    response = test_client.post("/studies/", json=study_data)
     assert response.status_code == 200
     data = response.json()
     assert "details" in data
     study_id = data["details"]["id"]
     
     # Retrieve study
-    response = await test_client.get(f"/studies/{study_id}")
+    response = test_client.get(f"/studies/{study_id}")
     assert response.status_code == 200
     study = response.json()
     assert study["title"] == study_data["title"]
 
-async def test_search_studies(test_client):
+def test_search_studies(test_client):
     """Test vector similarity search"""
     # Create test studies
     study_data = [
@@ -75,7 +72,7 @@ async def test_search_studies(test_client):
     ]
     
     for data in study_data:
-        response = await test_client.post("/studies/", json=data)
+        response = test_client.post("/studies/", json=data)
         assert response.status_code == 200
     
     # Search for AI-related studies
@@ -85,12 +82,12 @@ async def test_search_studies(test_client):
         "min_score": 0.0
     }
     
-    response = await test_client.post("/search/", json=search_query)
+    response = test_client.post("/search/", json=search_query)
     assert response.status_code == 200
     results = response.json()
     assert len(results) > 0
 
-async def test_invalid_study_id(test_client):
+def test_invalid_study_id(test_client):
     """Test retrieval with invalid study ID"""
-    response = await test_client.get(f"/studies/{str(ObjectId())}")
+    response = test_client.get(f"/studies/{str(ObjectId())}")
     assert response.status_code == 404
