@@ -32,7 +32,7 @@ Let's look at the important changes we need to make. We'll store these files in 
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    MONGODB_URI: str = "mongodb://localhost:27017/"
+    MONGODB_ATLAS_URI: str = "mongodb://localhost:27017/"
     DATABASE_NAME: str = "science_decoder"
     VECTOR_DIMENSIONS: int = 768
     LOG_LEVEL: str = "INFO"
@@ -52,7 +52,7 @@ class DatabaseManager:
         
     async def connect(self):
         logger.info("Connecting to MongoDB...")
-        self.client = AsyncIOMotorClient(settings.MONGODB_URI)
+        self.client = AsyncIOMotorClient(settings.MONGODB_ATLAS_URI)
         self.db = self.client[settings.DATABASE_NAME]
         logger.info("Connected successfully!")
 ```

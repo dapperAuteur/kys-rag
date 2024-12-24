@@ -3,8 +3,10 @@ from typing import Optional, List, Dict, Any
 import logging
 from datetime import datetime
 from config import get_settings
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from bson import ObjectId
+
+# Configure logging for our database operations
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +14,13 @@ class DatabaseManager:
     """Manages database connections and operations with metadata support"""
     
     def __init__(self):
-        self.client: Optional[AsyncIOMotorClient] = None
-        self.db: Optional[AsyncIOMotorDatabase] = None
+        """Initialize database manager with settings and connection state."""
+        self._client: Optional[AsyncIOMotorClient] = None
+        self._db: Optional[AsyncIOMotorDatabase] = None
         self.settings = get_settings()
         self.vector_search_enabled = False
+
+        logger.info("DatabaseManager initialized with settings")
     
     async def connect(self) -> None:
         """Connect to MongoDB Atlas with local fallback"""
@@ -265,3 +270,4 @@ class DatabaseManager:
 
 # Single instance for the application
 database = DatabaseManager()
+logger.info("Created global database manager instance")

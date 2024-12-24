@@ -2,7 +2,10 @@ from transformers import AutoTokenizer, AutoModel
 import torch
 from typing import List, Optional, Dict, Any
 import logging
-from models import Study, SearchQuery, SearchResponse, Source, SourceType
+from datetime import datetime
+from models import (
+    ScientificStudy, Article, SearchQuery, SearchResult, TextChunk, PydanticObjectId
+)
 from database import database
 from config import get_settings
 from bson import ObjectId
@@ -13,13 +16,28 @@ import re
 from urllib.parse import urlparse
 import tempfile
 
+# Configure logging for our services
 logger = logging.getLogger(__name__)
 
-class StudyService:
+class ContentService:
+    """Base service for content processing with proper logging."""
     def __init__(self):
-        self.settings = get_settings()
-        self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
-        self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
+        """Initialize common components with error handling.
+        This initialization method sets up the SciBERT model and tokenizer needed for processing scientific text. It includes comprehensive error handling to catch any issues during model loading.
+        """
+        try:
+            logger.info("Initializing ContentService...")
+            self.settings = get_settings()
+            # Initialize SciBERT components
+            logger.info(f"Loading model: {self.settings.MODEL_NAME}")
+            
+            self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
+            self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
+            logger.info("ContentService initialized successfully")
+        except (OSError, ValueError) as e:
+            # Handle specific errors related to model loading
+            logger.error(f"Failed to load SciBERT model or tokenizer: {e}")
+            raise RuntimeError(f"Model initialization failed: {e}") from e
         
     async def process_source(self, source: Source) -> List[Dict[str, Any]]:
         """Process source content and generate chunks with embeddings"""
@@ -150,8 +168,9 @@ class StudyService:
             
             return response_results
         except Exception as e:
-            logger.error(f"Error searching studies: {e}")
-            raise
+            # Handle any unexpected errors
+            logger.error(f"Unexpected error during ContentService initialization: {e}")
+            raise RuntimeError(f"ContentService initialization failed: {e}") from e
 
     def _build_search_pipeline(self, query_vector: List[float], query: SearchQuery) -> List[Dict]:
         """Build MongoDB aggregation pipeline for search"""

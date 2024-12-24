@@ -1,0 +1,22 @@
+[pytest]
+# Use strict asyncio mode for better async test behavior
+asyncio_mode = strict
+
+# Configure logging
+log_cli = true
+log_cli_level = INFO
+log_cli_format = %(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)
+log_cli_date_format = %Y-%m-%d %H:%M:%S
+
+# Test file patterns
+python_files = test_*.py
+python_classes = Test*
+python_functions = test_*
+
+# Disable warnings that might clutter test output
+filterwarnings =
+    ignore::DeprecationWarning
+    ignore::UserWarning
+
+# Verbose output for better debugging
+addopts = -v --tb=short
