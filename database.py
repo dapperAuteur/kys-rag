@@ -76,15 +76,27 @@ class DatabaseManager:
                 raise
 
     async def _setup_fallback_vector_index(self) -> None:
-        """Setup basic vector index when vector search is not available"""
-        try:
-            logger.info("Creating regular index for basic vector storage...")
-            await self.db.studies.create_index([("vector", 1)], name="basic_vector_index")
-            self.vector_search_enabled = False
-            logger.info("Basic vector index created successfully")
-        except Exception as e:
-            logger.error(f"Failed to create basic vector index: {e}")
-            raise
+      """Setup basic vector index when vector search is not available"""
+      try:
+          # Check for existing vector index first
+          existing_indexes = await self.db.studies.list_indexes().to_list(None)
+          has_vector_index = any(
+              'vector' in idx.get('name', '') for idx in existing_indexes
+          )
+          
+          if has_vector_index:
+              logger.info("Basic vector index already exists, skipping creation")
+              self.vector_search_enabled = False
+              return
+              
+          logger.info("Creating regular index for basic vector storage...")
+          await self.db.studies.create_index([("vector", 1)], name="basic_vector_index")
+          self.vector_search_enabled = False
+          logger.info("Basic vector index created successfully")
+      except Exception as e:
+          logger.error(f"Failed to create basic vector index: {e}")
+          # Don't raise here - just log the error since we can still operate with an existing index
+          self.vector_search_enabled = False
 
     async def _setup_text_index(self) -> None:
         """Setup text search index with conflict handling"""
