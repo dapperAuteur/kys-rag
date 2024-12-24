@@ -1,65 +1,85 @@
-from fastapi import FastAPI
-import faiss
-import numpy as np
-from transformers import AutoTokenizer, AutoModelForQuestionAnswering
-from pydantic import BaseModel
-import torch
+from fastapi import FastAPI, HTTPException, Depends
+from contextlib import asynccontextmanager
+import logging
+from typing import List
+from models import Study, SearchQuery, SearchResponse, StatusResponse
+from services import study_service
+from database import database
+from config import get_settings
 
-class QuestionRequest(BaseModel):
-    question: str
-    context: str
+# Configure logging
+logging.basicConfig(level=get_settings().LOG_LEVEL)
+logger = logging.getLogger(__name__)
 
-tokenizer = AutoTokenizer.from_pretrained("allenai/scibert_scivocab_uncased")
-model = AutoModelForQuestionAnswering.from_pretrained("allenai/scibert_scivocab_uncased")
+# Application lifecycle management
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle - startup and shutdown"""
+    try:
+        # Startup
+        logger.info("Starting application...")
+        await database.connect()
+        yield
+    finally:
+        # Shutdown
+        logger.info("Shutting down application...")
+        await database.close()
 
-index = faiss.IndexFlatL2(768)
+# Create FastAPI application
+app = FastAPI(
+    title="Science Decoder",
+    description="Scientific paper search and analysis API",
+    version="2.0.0",
+    lifespan=lifespan
+)
 
-# Example: Add random data to the index
-data = np.random.random((10, 768)).astype("float32")
-index.add(data)
+@app.get("/", response_model=StatusResponse)
+async def read_root():
+    """Root endpoint - application status"""
+    return StatusResponse(
+        status="ok",
+        message="Welcome to the Science Decoder API!",
+        details={"version": "2.0.0"}
+    )
 
-app = FastAPI()
+@app.post("/studies/", response_model=StatusResponse)
+async def create_study(study: Study):
+    """Create a new study"""
+    try:
+        study_id = await study_service.save_study(study)
+        return StatusResponse(
+            status="success",
+            message="Study created successfully",
+            details={"id": study_id}
+        )
+    except Exception as e:
+        logger.error(f"Error creating study: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/search")
-def search_vectors(query_vector: list):
-   query = np.array([query_vector]).astype("float32")
-   distances, indices = index.search(query, k=5)
-   return {"distances": distances.tolist(), "indices": indices.tolist()}
+@app.get("/studies/{study_id}", response_model=Study)
+async def get_study(study_id: str):
+    """Retrieve a study by ID"""
+    try:
+        study = await study_service.get_study_by_id(study_id)
+        if not study:
+            raise HTTPException(status_code=404, detail="Study not found")
+        return study
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving study: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/")
-def read_root():
-  return {"message": "Welcome to the KYS RAG: Science Decoder Tool!"}
+@app.post("/search/", response_model=List[SearchResponse])
+async def search_studies(query: SearchQuery):
+    """Search for similar studies"""
+    try:
+        results = await study_service.search_similar_studies(query)
+        return results
+    except Exception as e:
+        logger.error(f"Error searching studies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/ask")
-def answer_question(request: QuestionRequest):
-  inputs = tokenizer(request.question, request.context, return_tensors="pt", truncation=True, max_length=512)
-  outputs = model(**inputs)
-
-  start_scores = outputs.start_logits
-  end_scores = outputs.end_logits
-
-  start_index = torch.argmax(start_scores)
-  end_index = torch.argmax(end_scores)
-
-  if end_index < start_index:
-      end_index = start_index + 1
-
-  all_tokens = tokenizer.convert_ids_to_tokens(inputs.input_ids[0])
-  answer = tokenizer.convert_tokens_to_string(all_tokens[start_index:end_index + 1])
-
-  answer = answer.strip()
-
-  if not answer:
-      return {"answer": "Could not find answer in context", "debug_info": {
-          "start_index": start_index.item(),
-          "end_index": end_index.item(),
-          "total_tokens": len(all_tokens)
-      }}
-  
-  return {"answer": answer}
-
-@app.get("/test-search")
-def test_search():
-   query_vector = np.random.random(768).astype("float32")
-   distances, indices = index.search(np.array([query_vector]), k=3)
-   return {"query": query_vector.tolist(), "distances": distances.tolist(), "indices": indices.tolist()}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

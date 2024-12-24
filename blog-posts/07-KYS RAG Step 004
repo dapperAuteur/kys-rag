@@ -1,0 +1,169 @@
+### **Step 4: Storing and Searching Scientific Studies Without FAISS**  
+
+Welcome back! In **Step 3**, we gave our Science Decoder Tool a memory by adding MongoDB. This allowed us to store scientific studies, organize them by topics and disciplines, and retrieve them when needed. MongoDB became the tool's "library," keeping all its information safe and ready for future use.  
+
+However, as we moved forward, **FAISS started causing problems.** While FAISS is a great tool for fast similarity searches, we’ve decided to temporarily remove it and focus on building the rest of the project. Once the other components are stable, we’ll revisit FAISS and add it back to make searches faster and more efficient.  
+
+In this step, we’ll introduce **Motor**, a Python library that makes MongoDB calls asynchronous. This will allow our app to handle multiple tasks at the same time, improving its speed and scalability.  
+
+---
+
+### **What We’ll Do in Step 4**  
+1. **Use Motor**: Replace synchronous MongoDB calls with Motor for asynchronous database operations.  
+2. **Search Without FAISS**: Implement a basic search function that retrieves studies directly from MongoDB.  
+3. **Test Everything**: Ensure the app can save, retrieve, and search studies successfully.  
+
+---
+
+### **Why This Step Matters**  
+Making MongoDB calls asynchronous using Motor will allow the tool to handle multiple users and tasks simultaneously without slowing down. Removing FAISS simplifies the search process for now, so we can focus on other features without delays caused by debugging FAISS.  
+
+---
+
+### **Step-by-Step Guide**
+
+#### **1. Set Up Motor for MongoDB**  
+Motor is a library designed to make MongoDB operations asynchronous. Since our app already connects to MongoDB, we’ll modify the connection to use Motor.
+
+1. Replace the existing MongoDB connection code with the following:
+   ```python
+   from motor.motor_asyncio import AsyncIOMotorClient
+
+   # MongoDB connection using Motor
+   client = AsyncIOMotorClient("mongodb://localhost:27017/")
+   db = client["science_decoder"]
+   studies_collection = db["studies"]
+   ```
+
+2. Test the connection by adding this to the startup event:
+   ```python
+   @app.on_event("startup")
+   async def startup_event():
+       try:
+           # Test MongoDB connection
+           await studies_collection.database.command("ping")
+           logger.info("Connected to MongoDB successfully.")
+       except Exception as e:
+           logger.error(f"Failed to connect to MongoDB: {str(e)}")
+           raise
+   ```
+
+---
+
+#### **2. Add a Basic Search Function**  
+We’ll implement a search function that retrieves studies from MongoDB based on the topic or discipline. Without FAISS, the search will only use metadata.
+
+1. Update the `/get-studies` endpoint to make it asynchronous:
+   ```python
+   @app.get("/get-studies/{topic}")
+   async def get_studies_by_topic(topic: str):
+       """Retrieve studies by topic."""
+       try:
+           cursor = studies_collection.find({"topic": topic})
+           studies = []
+           async for study in cursor:
+               study["_id"] = str(study["_id"])  # Convert ObjectId to string
+               studies.append(study)
+           return {"studies": studies}
+       except Exception as e:
+           logger.error(f"Error retrieving studies: {str(e)}")
+           raise HTTPException(status_code=500, detail="Error retrieving studies.")
+   ```
+
+2. Add a new search endpoint to search by both topic and discipline:
+   ```python
+   @app.get("/search-studies")
+   async def search_studies(topic: str = None, discipline: str = None):
+       """Search studies by topic and/or discipline."""
+       try:
+           query = {}
+           if topic:
+               query["topic"] = topic
+           if discipline:
+               query["discipline"] = discipline
+           
+           cursor = studies_collection.find(query)
+           studies = []
+           async for study in cursor:
+               study["_id"] = str(study["_id"])  # Convert ObjectId to string
+               studies.append(study)
+           return {"studies": studies}
+       except Exception as e:
+           logger.error(f"Error searching studies: {str(e)}")
+           raise HTTPException(status_code=500, detail="Error searching studies.")
+   ```
+
+---
+
+#### **3. Test the Updated App**  
+
+1. **Restart the Server**:
+   Run the app:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+2. **Save a Study**:
+   Test saving a study with the following curl command:
+   ```bash
+   curl -X POST "http://127.0.0.1:8000/save-study" \
+   -H "Content-Type: application/json" \
+   -d '{
+       "title": "Motor Test",
+       "text": "Testing Motor with asynchronous MongoDB calls.",
+       "topic": "Database",
+       "discipline": "Programming"
+   }'
+   ```
+
+3. **Retrieve Studies by Topic**:
+   Fetch all studies under a specific topic:
+   ```bash
+   curl -X GET "http://127.0.0.1:8000/get-studies/Database"
+   ```
+
+4. **Search Studies by Topic and Discipline**:
+   Search for studies by both topic and discipline:
+   ```bash
+   curl -X GET "http://127.0.0.1:8000/search-studies?topic=Database&discipline=Programming"
+   ```
+
+**Expected Results**:
+- For both `/get-studies` and `/search-studies`, the response should include saved studies that match the query.
+
+---
+
+### **Strengths of This Approach**  
+
+1. **Asynchronous MongoDB Calls**:
+   - Using Motor allows the app to handle multiple users or requests at the same time, making it faster and more scalable.
+
+2. **Simpler Debugging**:
+   - Removing FAISS for now reduces complexity, making it easier to focus on core functionality.
+
+3. **Improved Flexibility**:
+   - Searching directly in MongoDB by topic or discipline is straightforward and easy to expand.
+
+---
+
+### **Weaknesses to Consider**  
+
+1. **Search Speed**:
+   - Searching directly in MongoDB might be slower than FAISS for large datasets. However, this trade-off is acceptable for now as we prioritize stability.
+
+2. **No Similarity Matching**:
+   - Without FAISS, searches are limited to exact matches on metadata, which means the tool can’t find studies with similar content yet.
+
+---
+
+### **Celebrate Your Progress!**  
+Congratulations! Your Science Decoder Tool can now store and search scientific studies asynchronously, all without the complexity of FAISS. While this version might not support advanced similarity searches, it’s reliable, scalable, and ready for real-world use.
+
+---
+
+### **What’s Next?**
+In **Step 5**, we’ll add a user-friendly interface using Next.js. This will let users interact with the tool through a sleek and responsive web app, making it easier to submit, search, and explore scientific studies. Stay tuned as we bring the tool closer to its final form!  
+
+--- 
+
+Let me know if you need further clarification or additional edits!
