@@ -3,11 +3,12 @@ from typing import Optional, List
 import logging
 from config import get_settings
 import numpy as np
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    """Manages database connections with fallback support"""
+    """Manages database connections and operations with metadata support"""
     
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
@@ -37,13 +38,13 @@ class DatabaseManager:
         
         self.db = self.client[self.settings.DATABASE_NAME]
         
-        # Try to create vector search index, fall back to regular index if not supported
+        # Setup indexes for vector search and metadata
         await self.setup_indexes()
 
     async def setup_indexes(self) -> None:
-        """Create necessary database indexes with fallback options"""
+        """Create necessary database indexes for vectors and metadata"""
         try:
-            # First try to create vector search index
+            # Vector search index setup
             try:
                 logger.info("Attempting to create vector search index...")
                 await self.db.studies.create_index(
@@ -59,80 +60,135 @@ class DatabaseManager:
             except Exception as e:
                 logger.warning(f"Vector search not available: {e}")
                 logger.info("Creating regular indexes for basic vector storage...")
-                # Create regular index on vector field
                 await self.db.studies.create_index("vector")
                 self.vector_search_enabled = False
             
-            # Create text index for traditional text search
+            # Create text search index for metadata
             await self.db.studies.create_index(
-                [("title", "text"), ("text", "text"), ("topic", "text")],
-                name="text_index"
+                [
+                    ("title", "text"),
+                    ("text", "text"),
+                    ("topic", "text"),
+                    ("keywords", "text")
+                ],
+                name="text_search_index"
             )
             
+            # Create indexes for common metadata queries
+            await self.db.studies.create_index([("publication_date", -1)])
+            await self.db.studies.create_index([("citation_count", -1)])
+            await self.db.studies.create_index([("doi", 1)], unique=True, sparse=True)
+            await self.db.studies.create_index([("created_at", -1)])
+            await self.db.studies.create_index([("discipline", 1)])
+            await self.db.studies.create_index([("authors.name", 1)])
+            
+            logger.info("All indexes created successfully")
         except Exception as e:
             logger.error(f"Failed to create indexes: {e}")
             raise
 
-    async def vector_similarity_search(self, query_vector: List[float], limit: int = 5) -> List[dict]:
+    async def vector_similarity_search(
+        self,
+        query_vector: List[float],
+        limit: int = 5,
+        metadata_filters: Optional[dict] = None
+    ) -> List[dict]:
         """
-        Perform vector similarity search using appropriate method based on availability
+        Perform vector similarity search with metadata filtering
         """
-        if self.vector_search_enabled:
-            # Use native vector search if available
-            pipeline = [
-                {
+        try:
+            pipeline = []
+            
+            if self.vector_search_enabled:
+                # Use native vector search if available
+                pipeline.append({
                     "$search": {
                         "index": "vector_index",
                         "knnBeta": {
                             "vector": query_vector,
                             "path": "vector",
-                            "k": limit
+                            "k": limit * 2  # Get more results for filtering
                         }
                     }
-                },
+                })
+            else:
+                # Fallback: Manual similarity calculation
+                pipeline.extend([
+                    {
+                        "$project": {
+                            "vector": 1,
+                            "title": 1,
+                            "text": 1,
+                            "topic": 1,
+                            "discipline": 1,
+                            "authors": 1,
+                            "publication_date": 1,
+                            "keywords": 1,
+                            "citation_count": 1,
+                            "doi": 1,
+                            "created_at": 1,
+                            "similarity": {
+                                "$function": {
+                                    "body": """function(a, b) {
+                                        return Array.zip(a, b).reduce((sum, pair) => 
+                                            sum + pair[0] * pair[1], 0) /
+                                            (Math.sqrt(a.reduce((sum, val) => 
+                                                sum + val * val, 0)) *
+                                            Math.sqrt(b.reduce((sum, val) => 
+                                                sum + val * val, 0)));
+                                    }""",
+                                    "args": ["$vector", query_vector],
+                                    "lang": "js"
+                                }
+                            }
+                        }
+                    },
+                    {"$sort": {"similarity": -1}}
+                ])
+            
+            # Apply metadata filters if provided
+            if metadata_filters:
+                pipeline.append({"$match": metadata_filters})
+            
+            # Final stages
+            pipeline.extend([
+                {"$limit": limit},
                 {
                     "$project": {
                         "vector": 0,
-                        "score": {"$meta": "searchScore"}
+                        "score": {
+                            "$cond": {
+                                "if": self.vector_search_enabled,
+                                "then": {"$meta": "searchScore"},
+                                "else": "$similarity"
+                            }
+                        }
                     }
                 }
-            ]
+            ])
             
             results = await self.db.studies.aggregate(pipeline).to_list(length=limit)
             return results
-        else:
-            # Fallback: Manual similarity calculation
-            # Get all documents (with reasonable limit)
-            all_docs = await self.db.studies.find(
-                {},
-                {'vector': 1, 'title': 1, 'text': 1, 'topic': 1, 'discipline': 1, 'created_at': 1}
-            ).limit(1000).to_list(length=1000)
             
-            # Calculate similarities
-            query_vector_np = np.array(query_vector)
-            similarities = []
-            
-            for doc in all_docs:
-                if 'vector' in doc:
-                    doc_vector = np.array(doc['vector'])
-                    # Calculate cosine similarity
-                    similarity = np.dot(query_vector_np, doc_vector) / (
-                        np.linalg.norm(query_vector_np) * np.linalg.norm(doc_vector)
-                    )
-                    similarities.append((doc, similarity))
-            
-            # Sort by similarity and get top k
-            similarities.sort(key=lambda x: x[1], reverse=True)
-            top_results = similarities[:limit]
-            
-            # Format results
-            results = []
-            for doc, score in top_results:
-                doc['score'] = float(score)
-                doc.pop('vector', None)  # Remove vector from result
-                results.append(doc)
-            
-            return results
+        except Exception as e:
+            logger.error(f"Error in vector similarity search: {e}")
+            raise
+
+    async def update_citation_count(self, study_id: str, new_count: int) -> None:
+        """Update the citation count for a study"""
+        try:
+            await self.db.studies.update_one(
+                {"_id": ObjectId(study_id)},
+                {
+                    "$set": {
+                        "citation_count": new_count,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error updating citation count: {e}")
+            raise
 
     async def close(self) -> None:
         """Close database connection"""
