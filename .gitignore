@@ -171,3 +171,7 @@ cython_debug/
 .pypirc
 
 samples/
+
+papers/exercise_study.pages
+
+papers/exercise_and_brain_health.pages
