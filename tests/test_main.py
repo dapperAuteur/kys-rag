@@ -5,7 +5,7 @@ import json
 import logging
 from main import app
 from database import database
-from models import ScientificStudy, Article, SearchQuery
+from models import Study, Article, SearchQuery
 from bson import ObjectId
 
 # Configure logging for tests
