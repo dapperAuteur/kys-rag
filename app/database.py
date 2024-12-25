@@ -5,10 +5,18 @@ from datetime import datetime
 from config import get_settings
 from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from bson import ObjectId
+import os
+from dotenv import load_dotenv
 
 # Configure logging for our database operations
 
 logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# MongoDB connection settings
+MONGODB_ATLAS_URI = os.getenv("MONGODB_ATLAS_URI", "mongodb+srv://<username>:<password>@<cluster>.mongodb.net/")
 
 class DatabaseManager:
     """Manages database connections and operations with metadata support"""
