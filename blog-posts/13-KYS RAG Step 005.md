@@ -63,7 +63,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Optional
 
-class ScientificStudy(BaseModel):
+class Study(BaseModel):
     title: str
     text: str
     authors: List[str]
