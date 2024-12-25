@@ -3,8 +3,7 @@ from contextlib import asynccontextmanager
 import logging
 from typing import List
 from models import (
-    ScientificStudy, Article, SearchQuery, 
-    SearchResult, StatusResponse, PydanticObjectId
+    Study, Article, SearchQuery, SearchResponse, StatusResponse, PydanticObjectId
 )
 from services import study_service, article_service, search_service
 from database import database
@@ -46,7 +45,7 @@ async def read_root():
 
 # Study Routes
 @app.post("/studies/", response_model=StatusResponse)
-async def create_study(study: ScientificStudy):
+async def create_study(study: Study):
     """Create a new scientific study with vector embeddings"""
     try:
         logger.info(f"Creating new study: {study.title}")
@@ -60,7 +59,7 @@ async def create_study(study: ScientificStudy):
         logger.error(f"Error creating study: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/studies/{study_id}", response_model=ScientificStudy)
+@app.get("/studies/{study_id}", response_model=Study)
 async def get_study(study_id: str):
     """Retrieve a study by its ID"""
     try:
@@ -119,7 +118,7 @@ async def get_article(article_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Search Routes
-@app.post("/search/", response_model=List[SearchResult])
+@app.post("/search/", response_model=List[SearchResponse])
 async def search_content(query: SearchQuery):
     """Search for studies and articles using vector similarity"""
     try:
