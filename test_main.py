@@ -1,39 +1,38 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app  # Import the app instance from main.py
+from main import app
 from database import database
 from models import Study, SearchQuery
 from bson import ObjectId
 
 @pytest.fixture(scope="module")
-def test_client():
+async def test_client():
     """Fixture to return a TestClient"""
     with TestClient(app) as client:
+        await database.connect()  # Connect before tests
         yield client
+        await database.disconnect()  # Disconnect after tests
 
 @pytest.fixture(autouse=True)
-def setup_teardown():
+async def setup_teardown():
     """Setup and teardown for each test"""
-    # Setup
-    database.connect()
-    database.db.studies.delete_many({})
-
+    # Setup - clean the database
+    await database.db.studies.delete_many({})
     yield
+    # Teardown - clean up after tests
+    await database.db.studies.delete_many({})
 
-    # Teardown
-    database.db.studies.delete_many({})
-    database.close()
-
-def test_root(test_client):
+@pytest.mark.asyncio
+async def test_root(test_client):
     """Test root endpoint"""
     response = test_client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
 
-def test_create_and_retrieve_study(test_client):
+@pytest.mark.asyncio
+async def test_create_and_retrieve_study(test_client):
     """Test study creation and retrieval"""
-    # Create study
     study_data = {
         "title": "Test Study",
         "text": "This is a test study about science.",
@@ -41,6 +40,7 @@ def test_create_and_retrieve_study(test_client):
         "discipline": "Computer Science"
     }
     
+    # Create study
     response = test_client.post("/studies/", json=study_data)
     assert response.status_code == 200
     data = response.json()
@@ -53,9 +53,9 @@ def test_create_and_retrieve_study(test_client):
     study = response.json()
     assert study["title"] == study_data["title"]
 
-def test_search_studies(test_client):
+@pytest.mark.asyncio
+async def test_search_studies(test_client):
     """Test vector similarity search"""
-    # Create test studies
     study_data = [
         {
             "title": "AI Study",
@@ -71,6 +71,7 @@ def test_search_studies(test_client):
         }
     ]
     
+    # Create test studies
     for data in study_data:
         response = test_client.post("/studies/", json=data)
         assert response.status_code == 200
@@ -87,7 +88,8 @@ def test_search_studies(test_client):
     results = response.json()
     assert len(results) > 0
 
-def test_invalid_study_id(test_client):
+@pytest.mark.asyncio
+async def test_invalid_study_id(test_client):
     """Test retrieval with invalid study ID"""
     response = test_client.get(f"/studies/{str(ObjectId())}")
     assert response.status_code == 404

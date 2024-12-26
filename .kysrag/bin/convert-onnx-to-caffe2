@@ -1,4 +1,4 @@
-#!/Users/bam/Code_NOiCloud/projects/kys-rag/kysrag/bin/python3
+#!/Users/bam/Code_NOiCloud/projects/kys-rag/.kysrag/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
