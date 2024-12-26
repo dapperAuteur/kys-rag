@@ -1,31 +1,27 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, ConfigDict
+from pydantic.functional_validators import BeforeValidator
+from typing import List, Optional, Any, Annotated
 from bson import ObjectId
 
-class PydanticObjectId(str):
-    """Custom type for handling MongoDB ObjectIds"""
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(str(v)):
-            raise ValueError("Invalid ObjectId")
+# Custom type for handling MongoDB ObjectId
+def validate_object_id(v: Any) -> str:
+    if isinstance(v, ObjectId):
         return str(v)
+    if isinstance(v, str):
+        try:
+            return str(ObjectId(v))
+        except Exception:
+            raise ValueError("Invalid ObjectId format")
+    raise ValueError("Invalid ObjectId")
+
+PyObjectId = Annotated[str, BeforeValidator(validate_object_id)]
 
 class Study(BaseModel):
     """Represents a scientific study"""
-    id: Optional[PydanticObjectId] = Field(None, alias="_id")
-    title: str
-    text: str
-    topic: str
-    discipline: str
-    vector: Optional[List[float]] = None
-
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_schema_extra={
             "example": {
                 "title": "AI in Healthcare",
                 "text": "A study about artificial intelligence applications in healthcare",
@@ -33,20 +29,34 @@ class Study(BaseModel):
                 "discipline": "Computer Science"
             }
         }
+    )
+    
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    title: str
+    text: str
+    topic: str
+    discipline: str
+    vector: Optional[List[float]] = None
 
 class SearchQuery(BaseModel):
     """Search query parameters"""
+    model_config = ConfigDict(populate_by_name=True)
+    
     query_text: str
-    limit: int = 10
-    min_score: float = 0.5
+    limit: int = Field(default=10, ge=1, le=100)
+    min_score: float = Field(default=0.5, ge=0.0, le=1.0)
 
 class SearchResponse(BaseModel):
     """Search result with similarity score"""
+    model_config = ConfigDict(populate_by_name=True)
+    
     study: Study
-    score: float
+    score: float = Field(ge=0.0, le=1.0)
 
 class StatusResponse(BaseModel):
     """API response status"""
+    model_config = ConfigDict(populate_by_name=True)
+    
     status: str
     message: str
-    details: dict = {}
+    details: dict = Field(default_factory=dict)

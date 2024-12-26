@@ -3,9 +3,13 @@ from pydantic import Field
 from functools import lru_cache
 from typing import Literal
 import logging
+import os
 
 class Settings(BaseSettings):
     """Application settings with validation."""
+    
+    # Environment
+    ENV: str = Field(default="dev", description="Environment (dev/test/prod)")
     
     # MongoDB settings
     MONGODB_ATLAS_URI: str = Field(
@@ -16,6 +20,16 @@ class Settings(BaseSettings):
         default="science_decoder",
         description="MongoDB database name"
     )
+    
+    @property
+    def TEST_DATABASE_NAME(self) -> str:
+        """Get test database name."""
+        return f"{self.DATABASE_NAME}_test"
+    
+    @property
+    def ACTIVE_DATABASE_NAME(self) -> str:
+        """Get active database name based on environment."""
+        return self.TEST_DATABASE_NAME if self.ENV == "test" else self.DATABASE_NAME
     
     # Vector search settings
     VECTOR_DIMENSIONS: int = Field(
@@ -58,7 +72,7 @@ def get_settings() -> Settings:
     """Create and cache settings instance."""
     try:
         settings = Settings()
-        logging.info("Settings loaded successfully")
+        logging.info(f"Settings loaded successfully for environment: {settings.ENV}")
         return settings
     except Exception as e:
         logging.error(f"Failed to load settings: {e}")

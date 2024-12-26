@@ -367,7 +367,7 @@ pycosat @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_09
 pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
 pyct @ file:///Users/ec2-user/ci_py311/pyct_1678378955854/work
 pycurl==7.45.2
-pydantic==2.6.1
+pydantic>=2.0.0
 pydantic-settings==2.1.0
 pydantic_core==2.16.2
 PyDispatcher==2.0.5
@@ -384,7 +384,7 @@ pylint-venv @ file:///Users/ec2-user/ci_py311/pylint-venv_1678393629931/work
 pyls-spyder==0.4.0
 pymdown-extensions==10.11.2
 pymilvus==2.4.7
-pymongo==4.9.2
+pymongo>=4.0.0
 PyMuPDF==1.23.21
 PyMuPDFb==1.23.9
 PyMySQL==1.1.1

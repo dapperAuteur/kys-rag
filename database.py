@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from typing import Optional, Dict, Any
+from typing import Optional
 import logging
 from config import get_settings
 
@@ -17,42 +17,46 @@ class DatabaseManager:
     
     async def connect(self) -> None:
         """Connect to MongoDB Atlas."""
-        try:
-            logger.info("Connecting to MongoDB Atlas...")
-            self._client = AsyncIOMotorClient(self.settings.MONGODB_ATLAS_URI)
-            # Test the connection
-            await self._client.admin.command('ping')
-            # Use the database name from settings instead of the full URI
-            self._db = self._client[self.settings.DATABASE_NAME]
-            logger.info("Successfully connected to MongoDB Atlas")
-        except Exception as e:
-            logger.error(f"Failed to connect to MongoDB Atlas: {e}")
-            raise ConnectionError(f"Could not connect to MongoDB: {e}")
+        if self._client is None:
+            try:
+                logger.info("Connecting to MongoDB Atlas...")
+                self._client = AsyncIOMotorClient(
+                    self.settings.MONGODB_ATLAS_URI,
+                    serverSelectionTimeoutMS=5000
+                )
+                # Test the connection
+                await self._client.admin.command('ping')
+                self._db = self._client[self.settings.DATABASE_NAME]
+                logger.info(f"Successfully connected to MongoDB Atlas database: {self.settings.DATABASE_NAME}")
+            except Exception as e:
+                self._client = None
+                self._db = None
+                logger.error(f"Failed to connect to MongoDB Atlas: {e}")
+                raise ConnectionError(f"Could not connect to MongoDB: {e}")
     
-    @property
-    def client(self) -> AsyncIOMotorClient:
-        """Get database client."""
-        if not self._client:
-            raise ConnectionError("Database not connected. Call connect() first.")
-        return self._client
+    def is_connected(self) -> bool:
+        """Check if database is connected."""
+        return self._client is not None and self._db is not None
     
-    @property
-    def db(self) -> AsyncIOMotorDatabase:
-        """Get database instance."""
-        if not self._db:
-            raise ConnectionError("Database not connected. Call connect() first.")
+    async def get_database(self) -> AsyncIOMotorDatabase:
+        """Get database instance, connecting if necessary."""
+        if not self.is_connected():
+            await self.connect()
         return self._db
-    
-    async def close(self) -> None:
-        """Close database connection."""
-        if self._client:
-            self._client.close()
-            logger.info("Closed database connection")
 
-    # Alias disconnect to close for consistent naming
+    async def get_client(self) -> AsyncIOMotorClient:
+        """Get client instance, connecting if necessary."""
+        if not self.is_connected():
+            await self.connect()
+        return self._client
+
     async def disconnect(self) -> None:
-        """Alias for close() method."""
-        await self.close()
+        """Disconnect from database."""
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+            self._db = None
+            logger.info("Disconnected from database")
 
 # Create a singleton instance
 database = DatabaseManager()
