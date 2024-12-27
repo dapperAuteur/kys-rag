@@ -10,7 +10,7 @@ The Science Decoder currently handles scientific studies in a single collection,
 
 #### Scientific Studies Model
 ```python
-class Study(BaseModel):
+class ScientificStudy(BaseModel):
     id: Optional[PyObjectId] = Field(default=None, alias="_id")
     title: str
     text: str
@@ -34,7 +34,7 @@ class Article(BaseModel):
     publication_date: datetime
     source_url: str
     publication_name: str
-    related_studies: List[PyObjectId] = Field(default_factory=list)
+    related_scientific_studies: List[PyObjectId] = Field(default_factory=list)
     claims: List[Dict[str, str]] = Field(default_factory=list)
     topic: str
     vector: Optional[List[float]] = None
@@ -44,16 +44,16 @@ class Article(BaseModel):
 ### 2. Database Structure
 
 - MongoDB Collections:
-  - `studies`: Scientific papers and research
+  - `scientific_studies`: Scientific papers and research
   - `articles`: News articles and blog posts
   - `claims`: Extracted claims from articles with verification status
-  - `chat_history`: User conversations about studies and articles
+  - `chat_history`: User conversations about scientific studies and articles
 
 ### 3. Service Layer Changes
 
-#### Study Service
+#### ScientificStudyService
 - CRUD operations for scientific studies
-- Vector similarity search within studies
+- Vector similarity search within scientific studies
 - Metadata extraction and validation
 - DOI verification and metadata fetching
 
@@ -62,11 +62,11 @@ class Article(BaseModel):
 - Vector similarity search within articles
 - Claim extraction and validation
 - URL validation and metadata scraping
-- Related studies linking
+- Related scientific studies linking
 
 #### Chat Service
-- Separate chat contexts for studies and articles
-- Cross-referencing between articles and studies
+- Separate chat contexts for scientific studies and articles
+- Cross-referencing between articles and scientific studies
 - Claim verification against scientific sources
 - Citation and evidence tracking
 
@@ -74,12 +74,12 @@ class Article(BaseModel):
 
 #### Studies API
 ```
-GET /studies/ - List studies with pagination
-POST /studies/ - Create new study
-GET /studies/{id} - Get study by ID
-PUT /studies/{id} - Update study
-DELETE /studies/{id} - Delete study
-POST /studies/search - Vector similarity search
+GET /scientific-studies/ - List scientific studies with pagination
+POST /scientific-studies/ - Create new scientific study
+GET /scientific-studies/{id} - Get scientific study by ID
+PUT /scientific-studies/{id} - Update scientific study
+DELETE /scientific-studies/{id} - Delete scientific study
+POST /scientific-studies/search - Vector similarity search
 ```
 
 #### Articles API
@@ -90,14 +90,14 @@ GET /articles/{id} - Get article by ID
 PUT /articles/{id} - Update article
 DELETE /articles/{id} - Delete article
 POST /articles/search - Vector similarity search
-GET /articles/{id}/studies - Get related studies
+GET /articles/{id}/scientific-studies - Get related scientific studies
 POST /articles/{id}/claims - Add claims
 GET /articles/{id}/claims - Get claims
 ```
 
 #### Chat API
 ```
-POST /chat/studies/{id} - Chat about study
+POST /chat/scientific-studies/{id} - Chat about scientific study
 POST /chat/articles/{id} - Chat about article
 GET /chat/history/{id} - Get chat history
 POST /chat/verify - Verify article claims
@@ -113,7 +113,7 @@ POST /chat/verify - Verify article claims
 
 2. **Phase 2: Service Layer Implementation**
    - Implement ArticleService
-   - Enhance StudyService
+   - Enhance ScientificStudyService
    - Create ClaimService
    - Develop ChatService
 
@@ -132,13 +132,13 @@ POST /chat/verify - Verify article claims
 ### 6. Technical Considerations
 
 #### Vector Search
-- Maintain separate vector indices for studies and articles
+- Maintain separate vector indices for scientific studies and articles
 - Use same embedding model (SciBERT) for consistency
 - Implement cross-collection search capabilities
 
 #### Claim Verification
 - Extract claims using NLP
-- Link claims to specific text in studies
+- Link claims to specific text in scientific studies
 - Calculate confidence scores for claim verification
 - Track verification history
 
@@ -156,7 +156,7 @@ POST /chat/verify - Verify article claims
 
 2. **Enhanced User Experience**
    - Targeted search within content types
-   - Clear relationship between articles and studies
+   - Clear relationship between articles and scientific studies
    - Better context in chat interactions
 
 3. **Maintainability**
