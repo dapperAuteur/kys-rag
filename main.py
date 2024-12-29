@@ -6,17 +6,6 @@ from models import Study, SearchQuery, SearchResponse, StatusResponse
 from services import study_service
 from database import database
 from config import get_settings
-# Ensure this imports correctly based on your project structure
-
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup_event():
-    await database.connect()
-    
-@app.on_event("shutdown")
-async def shutdown_event():
-    await database.disconnect()
 
 # Configure logging
 logging.basicConfig(level=get_settings().LOG_LEVEL)
@@ -34,7 +23,7 @@ async def lifespan(app: FastAPI):
     finally:
         # Shutdown
         logger.info("Shutting down application...")
-        await database.close()
+        await database.disconnect()
 
 # Create FastAPI application
 app = FastAPI(

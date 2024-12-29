@@ -2,6 +2,7 @@ from transformers import AutoTokenizer, AutoModel
 import torch
 from typing import List, Optional
 import logging
+import numpy as np
 from models import Study, SearchQuery, SearchResponse
 from database import database
 from config import get_settings
@@ -16,7 +17,7 @@ class StudyService:
         self.settings = get_settings()
         self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
         self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
-        
+    
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate vector embedding for text"""
         try:
@@ -30,7 +31,9 @@ class StudyService:
             with torch.no_grad():
                 outputs = self.model(**inputs)
                 embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
-                return embedding.tolist()
+                # Normalize the embedding
+                normalized = embedding / torch.norm(embedding)
+                return normalized.tolist()
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             raise
@@ -49,14 +52,11 @@ class StudyService:
             if "_id" in document and document["_id"] is None:
                 del document["_id"]
 
-            # Insert into database
-            result = await database.db.studies.insert_one(document)
-
-            # Log the generated _id to confirm it exists
-            logger.info(f"Study saved successfully with ID result.inserted_id: {result.inserted_id}")
-            logger.info(f"Study saved successfully with ID study.id: {study.id}")
-
-            # Return the _id as a string
+            # Get database instance and insert document
+            db = await database.get_database()
+            result = await db.studies.insert_one(document)
+            
+            logger.info(f"Study saved successfully with ID: {result.inserted_id}")
             return str(result.inserted_id)
         except Exception as e:
             logger.error(f"Error saving study: {e}")
@@ -68,24 +68,55 @@ class StudyService:
     ) -> List[SearchResponse]:
         """Search for similar studies using vector similarity"""
         try:
-            # Generate query vector
+            # Generate query vector and normalize it
             query_vector = await self.generate_embedding(query.query_text)
             
-            # Perform similarity search
-            results = await database.vector_similarity_search(
-                query_vector=query_vector,
-                limit=query.limit
-            )
+            # Get database instance
+            db = await database.get_database()
             
-            # Convert results to response objects
-            response_results = []
-            for doc in results:
-                score = doc.pop("score", 0.0)
+            # Perform vector similarity search using aggregation pipeline
+            pipeline = [
+                {
+                    "$addFields": {
+                        "similarity": {
+                            "$let": {
+                                "vars": {
+                                    "dotProduct": {
+                                        "$reduce": {
+                                            "input": {"$zip": {"inputs": ["$vector", query_vector]}},
+                                            "initialValue": 0.0,
+                                            "in": {
+                                                "$add": [
+                                                    "$$value",
+                                                    {"$multiply": [
+                                                        {"$arrayElemAt": ["$$this", 0]},
+                                                        {"$arrayElemAt": ["$$this", 1]}
+                                                    ]}
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                "in": {
+                                    "$min": [1.0, {"$max": [0.0, "$$dotProduct"]}]
+                                }
+                            }
+                        }
+                    }
+                },
+                {"$match": {"similarity": {"$gte": query.min_score}}},
+                {"$sort": {"similarity": -1}},
+                {"$limit": query.limit}
+            ]
+            
+            results = []
+            async for doc in db.studies.aggregate(pipeline):
+                score = doc.pop("similarity", 0.0)
                 if score >= query.min_score:
                     study = Study(**doc)
-                    response_results.append(SearchResponse(study=study, score=score))
+                    results.append(SearchResponse(study=study, score=score))
             
-            return response_results
+            return results
         except Exception as e:
             logger.error(f"Error searching studies: {e}")
             raise
@@ -93,78 +124,14 @@ class StudyService:
     async def get_study_by_id(self, study_id: str) -> Optional[Study]:
         """Retrieve a study by its ID"""
         try:
-            # Convert string ID to ObjectId for MongoDB query
-            doc = await database.db.studies.find_one({"_id": ObjectId(study_id)})
+            db = await database.get_database()
+            doc = await db.studies.find_one({"_id": ObjectId(study_id)})
             if doc:
-                # Convert ObjectId to string before creating Study object
-                doc["_id"] = str(doc["_id"])
                 return Study(**doc)
             return None
         except Exception as e:
             logger.error(f"Error retrieving study: {e}")
             raise
-        
-# test_main.py changes for the failing tests
-def test_create_and_retrieve_study(test_client):
-    """Test study creation and retrieval"""
-    study_data = {
-        "title": "Test Study",
-        "text": "This is a test study about science.",
-        "topic": "Testing",
-        "discipline": "Computer Science",
-        "vector": []  # Add empty vector if required
-    }
-    
-    # Create study
-    response = test_client.post("/studies/", json=study_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert "details" in data
-    study_id = data["details"]["id"]
-    
-    # Retrieve study - add small delay if needed
-    response = test_client.get(f"/studies/{study_id}")
-    assert response.status_code == 200
-    study = response.json()
-    assert study["title"] == study_data["title"]
 
-def test_search_studies(test_client):
-    """Test vector similarity search"""
-    # Create test studies
-    study_data = [
-        {
-            "title": "AI Study",
-            "text": "This study focuses on artificial intelligence.",
-            "topic": "AI",
-            "discipline": "Computer Science",
-            "vector": []  # Add empty vector if required
-        },
-        {
-            "title": "Biology Study",
-            "text": "This study examines cell biology.",
-            "topic": "Biology",
-            "discipline": "Life Sciences",
-            "vector": []  # Add empty vector if required
-        }
-    ]
-    
-    # Create studies and store their IDs
-    study_ids = []
-    for data in study_data:
-        response = test_client.post("/studies/", json=data)
-        assert response.status_code == 200
-        study_ids.append(response.json()["details"]["id"])
-    
-    # Search for AI-related studies
-    search_query = {
-        "query_text": "artificial intelligence research",
-        "limit": 5,
-        "min_score": 0.0
-    }
-    
-    response = test_client.post("/search/", json=search_query)
-    assert response.status_code == 200
-    results = response.json()
-    assert len(results) > 0
-
+# Create singleton instance
 study_service = StudyService()
