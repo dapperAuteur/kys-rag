@@ -105,14 +105,14 @@ curl -X POST "http://localhost:8000/articles/" \
 ```
 Real Article
 ```bash
-curl -X POST "https://archive.nytimes.com/well.blogs.nytimes.com/2016/04/27/1-minute-of-all-out-exercise-may-equal-45-minutes-of-moderate-exertion/?_r" \
+curl -X POST "http://localhost:8000/articles/" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "1 Minute of All-Out Exercise May Have Benefits of 45 Minutes of Moderate Exertion",
     "text": "For many of us, the most pressing question about exercise is: How little can I get away with?...",
     "author": "Gretchen Reynolds",
-    "publication_date": "2024-01-20T00:00:00Z",
-    "source_url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0154075",
+    "publication_date": "2016-04-27T05:45:00Z",
+    "source_url": "https://archive.nytimes.com/well.blogs.nytimes.com/2016/04/27/1-minute-of-all-out-exercise-may-equal-45-minutes-of-moderate-exertion/?_r",
     "publication_name": "The New York Times",
     "topic": "Exercise"
   }'
