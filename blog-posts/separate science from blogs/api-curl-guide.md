@@ -65,7 +65,7 @@ This command adds a new scientific study to the database. Think of it like submi
 ### Getting a Scientific Study
 
 ```bash
-curl -X GET "http://localhost:8000/scientific-studies/65abc123def456789"
+curl -X GET http://localhost:8000/scientific-studies/65abc123def456789
 ```
 
 Expected Response:
@@ -89,6 +89,7 @@ This command retrieves a scientific study using its ID. It's like looking up a b
 
 ### Creating a New Article
 
+Sample
 ```bash
 curl -X POST "http://localhost:8000/articles/" \
   -H "Content-Type: application/json" \
@@ -100,6 +101,20 @@ curl -X POST "http://localhost:8000/articles/" \
     "source_url": "https://example.com/brain-exercise",
     "publication_name": "Health News Daily",
     "topic": "Brain Health"
+  }'
+```
+Real Article
+```bash
+curl -X POST "https://archive.nytimes.com/well.blogs.nytimes.com/2016/04/27/1-minute-of-all-out-exercise-may-equal-45-minutes-of-moderate-exertion/?_r" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "1 Minute of All-Out Exercise May Have Benefits of 45 Minutes of Moderate Exertion",
+    "text": "For many of us, the most pressing question about exercise is: How little can I get away with?...",
+    "author": "Gretchen Reynolds",
+    "publication_date": "2024-01-20T00:00:00Z",
+    "source_url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0154075",
+    "publication_name": "The New York Times",
+    "topic": "Exercise"
   }'
 ```
 

@@ -106,10 +106,17 @@ POST /chat/verify - Verify article claims
 ### 5. Implementation Plan
 
 1. **Phase 1: Model and Database Migration**
+   - **Make sure you're in your virtual environment**
+     - Install Requirements from `./requirements.txt`
+     - `pip install -r requirements.txt`
+     - If you get any errors, we can install packages one at a time to identify and resolve conflicts:
+      - `pip install package-name==specific.version`
+   - Micgration Command `python -m app.core.db-migration`
    - Create new models for Article and Claims
    - Set up new MongoDB collections
    - Create database migration scripts
    - Update database manager for new collections
+ - `Remember: A well-organized requirements.txt file is like a recipe - it helps others (or yourself in the future) reproduce your development environment exactly. This is especially important when you're preparing to show your project to potential employers or clients.`
 
 2. **Phase 2: Service Layer Implementation**
    - Implement ArticleService
