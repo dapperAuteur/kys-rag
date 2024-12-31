@@ -1,4 +1,4 @@
-# Refactoring Science Decoder: Separating Studies and News Articles
+# Refactoring Science Decoder: Separating Scientific Studies and News Articles
 
 ## Current State
 
@@ -8,7 +8,7 @@ The Science Decoder currently handles scientific studies in a single collection,
 
 ### 1. Data Model Separation
 
-#### Scientific Studies Model
+#### Scientific Study Model
 ```python
 class ScientificStudy(BaseModel):
     id: Optional[PyObjectId] = Field(default=None, alias="_id")
@@ -57,14 +57,14 @@ class Article(BaseModel):
 - Metadata extraction and validation
 - DOI verification and metadata fetching
 
-#### Article Service
+#### ArticleService
 - CRUD operations for news articles
 - Vector similarity search within articles
 - Claim extraction and validation
 - URL validation and metadata scraping
 - Related scientific studies linking
 
-#### Chat Service
+#### ChatService
 - Separate chat contexts for scientific studies and articles
 - Cross-referencing between articles and scientific studies
 - Claim verification against scientific sources
@@ -72,7 +72,7 @@ class Article(BaseModel):
 
 ### 4. API Endpoints
 
-#### Studies API
+#### Scientific Studies API
 ```
 GET /scientific-studies/ - List scientific studies with pagination
 POST /scientific-studies/ - Create new scientific study
@@ -106,17 +106,10 @@ POST /chat/verify - Verify article claims
 ### 5. Implementation Plan
 
 1. **Phase 1: Model and Database Migration**
-   - **Make sure you're in your virtual environment**
-     - Install Requirements from `./requirements.txt`
-     - `pip install -r requirements.txt`
-     - If you get any errors, we can install packages one at a time to identify and resolve conflicts:
-      - `pip install package-name==specific.version`
-   - Micgration Command `python -m app.core.db-migration`
    - Create new models for Article and Claims
    - Set up new MongoDB collections
    - Create database migration scripts
    - Update database manager for new collections
- - `Remember: A well-organized requirements.txt file is like a recipe - it helps others (or yourself in the future) reproduce your development environment exactly. This is especially important when you're preparing to show your project to potential employers or clients.`
 
 2. **Phase 2: Service Layer Implementation**
    - Implement ArticleService
