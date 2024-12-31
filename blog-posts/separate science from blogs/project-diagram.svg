@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold" fill="#2c3e50">
+    Science Article Checker: How It Works
+  </text>
+
+  <!-- User Input Section -->
+  <rect x="50" y="80" width="200" height="100" rx="10" fill="#3498db" opacity="0.8"/>
+  <text x="150" y="130" text-anchor="middle" font-family="Arial" font-size="16" fill="white">User Input</text>
+  <text x="150" y="155" text-anchor="middle" font-family="Arial" font-size="12" fill="white">Articles &amp; Questions</text>
+
+  <!-- Processing Section -->
+  <rect x="300" y="80" width="200" height="400" rx="10" fill="#2ecc71" opacity="0.8"/>
+  <text x="400" y="110" text-anchor="middle" font-family="Arial" font-size="16" fill="white">Processing System</text>
+  
+  <!-- Processing Steps -->
+  <rect x="320" y="130" width="160" height="60" rx="5" fill="white" opacity="0.9"/>
+  <text x="400" y="165" text-anchor="middle" font-family="Arial" font-size="12" fill="#2c3e50">1. Check Content</text>
+  
+  <rect x="320" y="200" width="160" height="60" rx="5" fill="white" opacity="0.9"/>
+  <text x="400" y="235" text-anchor="middle" font-family="Arial" font-size="12" fill="#2c3e50">2. Find Studies</text>
+  
+  <rect x="320" y="270" width="160" height="60" rx="5" fill="white" opacity="0.9"/>
+  <text x="400" y="305" text-anchor="middle" font-family="Arial" font-size="12" fill="#2c3e50">3. Check Facts</text>
+  
+  <rect x="320" y="340" width="160" height="60" rx="5" fill="white" opacity="0.9"/>
+  <text x="400" y="375" text-anchor="middle" font-family="Arial" font-size="12" fill="#2c3e50">4. Create Response</text>
+
+  <!-- Database Section -->
+  <rect x="550" y="80" width="200" height="100" rx="10" fill="#9b59b6" opacity="0.8"/>
+  <text x="650" y="130" text-anchor="middle" font-family="Arial" font-size="16" fill="white">Storage</text>
+  <text x="650" y="155" text-anchor="middle" font-family="Arial" font-size="12" fill="white">Articles &amp; Studies</text>
+
+  <!-- Output Section -->
+  <rect x="550" y="380" width="200" height="100" rx="10" fill="#e74c3c" opacity="0.8"/>
+  <text x="650" y="430" text-anchor="middle" font-family="Arial" font-size="16" fill="white">User Response</text>
+  <text x="650" y="455" text-anchor="middle" font-family="Arial" font-size="12" fill="white">Simple Explanations</text>
+
+  <!-- Connecting Arrows -->
+  <path d="M250 130 L300 130" stroke="#2c3e50" stroke-width="2" fill="none"/>
+  <path d="M500 130 L550 130" stroke="#2c3e50" stroke-width="2" fill="none"/>
+  <path d="M500 430 L550 430" stroke="#2c3e50" stroke-width="2" fill="none"/>
+  
+  <!-- Legend -->
+  <rect x="50" y="520" width="700" height="60" rx="5" fill="white" stroke="#2c3e50"/>
+  <text x="70" y="545" font-family="Arial" font-size="14" fill="#2c3e50">Legend:</text>
+  <circle cx="150" cy="545" r="8" fill="#3498db"/>
+  <text x="170" y="545" font-family="Arial" font-size="12" fill="#2c3e50">User Input</text>
+  <circle cx="300" cy="545" r="8" fill="#2ecc71"/>
+  <text x="320" y="545" font-family="Arial" font-size="12" fill="#2c3e50">Processing</text>
+  <circle cx="450" cy="545" r="8" fill="#9b59b6"/>
+  <text x="470" y="545" font-family="Arial" font-size="12" fill="#2c3e50">Storage</text>
+  <circle cx="600" cy="545" r="8" fill="#e74c3c"/>
+  <text x="620" y="545" font-family="Arial" font-size="12" fill="#2c3e50">Response</text>
+</svg>

@@ -3,10 +3,10 @@ import asyncio
 from typing import Generator, AsyncGenerator
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from main import app
-from database import database
+from app.main import app
+from app.core.database import database, Collection
 import os
-from config import get_settings
+from app.config import get_settings
 
 # Set test environment
 os.environ["ENV"] = "test"
@@ -55,10 +55,19 @@ async def clean_database():
     # Ensure we're connected and clean before test
     await database.connect()
     if database.is_connected:
-        await database.db.studies.delete_many({})
+        collections_to_clean = [
+            Collection.SCIENTIFIC_STUDIES,
+            Collection.ARTICLES,
+            Collection.CHAT_HISTORY
+        ]
+        for collection in collections_to_clean:
+            coll = await database.get_collection(collection)
+            await coll.delete_many({})
     
     yield
     
     # Clean after test
     if database.is_connected:
-        await database.db.studies.delete_many({})
+        for collection in collections_to_clean:
+            coll = await database.get_collection(collection)
+            await coll.delete_many({})

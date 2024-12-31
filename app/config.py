@@ -31,6 +31,20 @@ class Settings(BaseSettings):
         """Get active database name based on environment."""
         return self.TEST_DATABASE_NAME if self.ENV == "test" else self.DATABASE_NAME
     
+    # Collection names
+    SCIENTIFIC_STUDIES_COLLECTION: str = Field(
+        default="scientific_studies",
+        description="Collection name for scientific studies"
+    )
+    ARTICLES_COLLECTION: str = Field(
+        default="articles",
+        description="Collection name for news articles"
+    )
+    CHAT_HISTORY_COLLECTION: str = Field(
+        default="chat_history",
+        description="Collection name for chat history"
+    )
+    
     # Vector search settings
     VECTOR_DIMENSIONS: int = Field(
         default=768, 
@@ -61,6 +75,22 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(
         default="INFO", 
         description="Logging level"
+    )
+    
+    # Claims verification settings
+    MIN_CLAIM_CONFIDENCE: float = Field(
+        default=0.7,
+        description="Minimum confidence score for claim verification"
+    )
+    
+    # Search settings
+    DEFAULT_SEARCH_LIMIT: int = Field(
+        default=10,
+        description="Default number of search results"
+    )
+    MIN_SIMILARITY_SCORE: float = Field(
+        default=0.5,
+        description="Minimum similarity score for search results"
     )
     
     class Config:
