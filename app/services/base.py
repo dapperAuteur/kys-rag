@@ -6,6 +6,8 @@ import logging
 from app.core.database import database, Collection
 from app.models.models import BaseDocument
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorCollection  # Add this import
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class BaseService(Generic[T]):
     
     def __init__(self, collection: Collection, model_class: type[T]):
         """Initialize the service with specific collection and model."""
-        self.collection = collection
+        self.collection_name = collection
         self.model_class = model_class
         self.settings = database.settings
         
@@ -24,9 +26,16 @@ class BaseService(Generic[T]):
         self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
         self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
     
+    async def get_collection(self) -> AsyncIOMotorCollection:
+        """Get the database collection for this service."""
+        logger.info(f"Getting collection: {self.collection_name}")
+        return await database.get_collection(self.collection_name)
+
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate vector embedding for text using SciBERT."""
         try:
+            # Log the text length to help with debugging
+            logger.info(f"Generating embedding for text of length: {len(text)}")
             inputs = self.tokenizer(
                 text,
                 return_tensors="pt",
@@ -48,8 +57,9 @@ class BaseService(Generic[T]):
     async def create(self, item: T) -> str:
         """Create a new item with vector embedding."""
         try:
+            logger.info(f"Creating new {self.collection_name} item")
             # Generate vector embedding if not provided
-            if not item.vector:
+            if not item.vector and hasattr(item, 'text'):
                 item.vector = await self.generate_embedding(item.text)
             
             # Set timestamps
@@ -64,13 +74,13 @@ class BaseService(Generic[T]):
                 del document["_id"]
             
             # Get collection and insert document
-            coll = await database.get_collection(self.collection)
+            coll = await self.get_collection()
             result = await coll.insert_one(document)
             
-            logger.info(f"Created new {self.collection.value} with ID: {result.inserted_id}")
+            logger.info(f"Created new {self.collection_name} with ID: {result.inserted_id}")
             return str(result.inserted_id)
         except Exception as e:
-            logger.error(f"Error creating {self.collection.value}: {e}")
+            logger.error(f"Error creating {self.collection_name}: {e}")
             raise
 
     async def get_by_id(self, item_id: str) -> Optional[T]:

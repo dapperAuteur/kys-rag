@@ -111,7 +111,7 @@ curl -X POST "http://localhost:8000/articles/" \
     "title": "1 Minute of All-Out Exercise May Have Benefits of 45 Minutes of Moderate Exertion",
     "text": "For many of us, the most pressing question about exercise is: How little can I get away with?...",
     "author": "Gretchen Reynolds",
-    "publication_date": "2016-04-27T05:45:00Z",
+    "publication_date": "2016-04-27T05:45:00+00:00",
     "source_url": "https://archive.nytimes.com/well.blogs.nytimes.com/2016/04/27/1-minute-of-all-out-exercise-may-equal-45-minutes-of-moderate-exertion/?_r",
     "publication_name": "The New York Times",
     "topic": "Exercise"
@@ -134,7 +134,7 @@ This command adds a news article to the database. It's similar to adding a scien
 ### Linking a Scientific Study to an Article
 
 ```bash
-curl -X POST "http://localhost:8000/articles/65def789abc123456/scientific-studies/65abc123def456789"
+curl -X POST "http://localhost:8000/articles/677371dd8e6c8c263009fb5a/scientific-studies/677349889d331bd57024132e"
 ```
 
 Expected Response:
