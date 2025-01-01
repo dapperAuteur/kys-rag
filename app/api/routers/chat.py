@@ -3,24 +3,74 @@ from typing import List, Dict, Any, Optional
 from app.models.models import ChatMessage
 from app.services.services import chat_service
 import logging
+from app.models.chat import (
+    ScientificStudyAnalysisRequest,
+    ScientificStudyAnalysisResponse,
+    ArticleAnalysisRequest,
+    ArticleAnalysisResponse,
+    ChatHistoryRequest,
+    SaveMessageRequest,
+    SaveMessageResponse
+)
+from app.services.services import chat_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-@router.post("/scientific-studies/{study_id}", response_model=Dict[str, Any])
-async def analyze_scientific_study(study_id: str, question: str):
-    """Analyze a scientific study based on a question."""
+@router.post("/scientific-studies/{study_id}", response_model=ScientificStudyAnalysisResponse,
+    description="Analyze a scientific study based on a question",
+    responses={
+        404: {"description": "Study not found"},
+        422: {"description": "Invalid question format"},
+        500: {"description": "Server error during analysis"}
+    }
+)
+async def analyze_scientific_study(
+    study_id: str,
+    request: ScientificStudyAnalysisRequest
+) -> ScientificStudyAnalysisResponse:
+    """Analyze a scientific study based on a question.
+    This endpoint processes questions about scientific studies and returns
+    structured analysis including key findings, methodology, and relevant sections.
+    
+    Args:
+        study_id: The ID of the scientific study to analyze
+        request: The analysis request containing the question
+        
+    Returns:
+        A structured analysis of the study based on the question
+        
+    Raises:
+        HTTPException: If the study is not found or analysis fails
+    """
     try:
         analysis = await chat_service.analyze_scientific_study(
             study_id=study_id,
-            question=question
+            question=request.question
         )
-        return analysis
+
+        # Convert the analysis to our response model
+        return ScientificStudyAnalysisResponse(
+            title=analysis["title"],
+            findings={
+                "key_points": analysis.get("key_findings", []),
+                "methodology": analysis.get("methodology"),
+                "limitations": analysis.get("limitations", []),
+                "citation": analysis.get("citation", "")
+            },
+            relevant_section=analysis.get("relevant_section"),
+            confidence_score=analysis.get("confidence_score", 0.0),
+            metadata=analysis.get("metadata", {})
+        )
     except ValueError as e:
+        logger.error(f"Study not found or invalid request: {e}")
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error analyzing scientific study: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while analyzing the study: {str(e)})"
+        )
 
 @router.post("/articles/{article_id}", response_model=Dict[str, Any])
 async def analyze_article(article_id: str, question: str):
