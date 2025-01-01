@@ -1,13 +1,11 @@
-from transformers import AutoTokenizer, AutoModel
-import torch
 from typing import List, Optional, TypeVar, Generic, Any
 from datetime import datetime
 import logging
 from app.core.database import database, Collection
 from app.models.models import BaseDocument
 from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorCollection  # Add this import
-
+from motor.motor_asyncio import AsyncIOMotorCollection
+from .vector_service import vector_service  # Import our new VectorService
 
 logger = logging.getLogger(__name__)
 
@@ -21,46 +19,31 @@ class BaseService(Generic[T]):
         self.collection_name = collection
         self.model_class = model_class
         self.settings = database.settings
-        
-        # Initialize ML models
-        self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
-        self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
     
     async def get_collection(self) -> AsyncIOMotorCollection:
         """Get the database collection for this service."""
         logger.info(f"Getting collection: {self.collection_name}")
         return await database.get_collection(self.collection_name)
 
-    async def generate_embedding(self, text: str) -> List[float]:
-        """Generate vector embedding for text using SciBERT."""
+    async def generate_embedding(self, text: str) -> Optional[List[float]]:
+        """Generate vector embedding for text using VectorService."""
         try:
-            # Log the text length to help with debugging
             logger.info(f"Generating embedding for text of length: {len(text)}")
-            inputs = self.tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                max_length=self.settings.CHUNK_SIZE,
-                padding=True
-            )
-            
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
-                # Normalize the embedding
-                normalized = embedding / torch.norm(embedding)
-                return normalized.tolist()
+            return await vector_service.generate_embedding(text)
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
-            raise
+            return None
 
     async def create(self, item: T) -> str:
         """Create a new item with vector embedding."""
         try:
             logger.info(f"Creating new {self.collection_name} item")
+            
             # Generate vector embedding if not provided
             if not item.vector and hasattr(item, 'text'):
                 item.vector = await self.generate_embedding(item.text)
+                if not item.vector:
+                    raise ValueError("Failed to generate vector embedding")
             
             # Set timestamps
             item.created_at = datetime.utcnow()
@@ -98,6 +81,10 @@ class BaseService(Generic[T]):
     async def update(self, item_id: str, item: T) -> bool:
         """Update an existing item."""
         try:
+            # Update vector if text has changed
+            if hasattr(item, 'text'):
+                item.vector = await self.generate_embedding(item.text)
+            
             item.updated_at = datetime.utcnow()
             update_data = item.model_dump(by_alias=True, exclude_none=True)
             
@@ -141,10 +128,14 @@ class BaseService(Generic[T]):
     ) -> List[dict]:
         """Search for similar items using vector similarity."""
         try:
+            # Generate query vector
             query_vector = await self.generate_embedding(query_text)
+            if not query_vector:
+                raise ValueError("Failed to generate query vector")
             
             coll = await database.get_collection(self.collection_name)
             
+            # Use vector_service to calculate similarities
             pipeline = [
                 {
                     "$addFields": {
