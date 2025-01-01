@@ -132,6 +132,7 @@ This RAG tool is designed to combat misinformation by providing a clear and unbi
 ---
 
 ## Getting Started
+
 ### **1. Clone the Repository**
 ```bash
 git clone https://github.com/your-username/scientific-rag-tool.git
@@ -139,26 +140,97 @@ cd scientific-rag-tool
 ```
 
 ### **2. Install Dependencies**
-Backend:
+
+#### Option 1: Using the Setup Script (Recommended)
+We provide a setup script that handles virtual environment creation, dependency installation, and GPU detection:
+
 ```bash
+# Make the script executable
+chmod +x setup.sh
+
+# Run the setup script
+./setup.sh
+```
+
+The setup script will:
+- Create and activate a Python virtual environment
+- Check for GPU availability
+- Install appropriate dependencies based on your choice:
+  - Production: Minimal dependencies for running the application
+  - Development: Includes testing tools, documentation generators, and development utilities
+- Create a `.env` file from template
+
+#### Option 2: Manual Installation
+
+For production:
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+
+# Install production dependencies
 pip install -r requirements.txt
 ```
-Frontend:
+
+For development:
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+Frontend dependencies:
 ```bash
 npm install
 ```
 
-### **3. Run the Application**
-- Start the FastAPI backend:
+### **3. Environment Setup**
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Edit `.env` with your configuration values.
+
+### **4. Run the Application**
+Start the FastAPI backend:
 ```bash
 uvicorn app.main:app --reload
 ```
-- Start the Next.js frontend:
+
+Start the Next.js frontend:
 ```bash
 npm run dev
 ```
 
-### **4. Deploy**
+### **5. Development Tools**
+When installed with development dependencies (`requirements-dev.txt`), you have access to:
+- **Testing**: `pytest` for running tests
+- **Code Formatting**: `black` and `isort` for consistent code style
+- **Type Checking**: `mypy` for static type analysis
+- **Documentation**: `mkdocs` for generating documentation
+- **Debugging**: Support through `debugpy`
+- **Notebooks**: Jupyter notebooks for experimentation
+
+Example development commands:
+```bash
+# Run tests
+pytest
+
+# Format code
+black .
+isort .
+
+# Type checking
+mypy .
+
+# Generate documentation
+mkdocs serve
+```
+
+### **6. Deploy**
 Follow deployment instructions for **Vercel** (frontend) and **Render/Fly.io** (backend).
 
 ---
