@@ -142,8 +142,18 @@ cd scientific-rag-tool
 ### **2. Install Dependencies**
 
 #### Option 1: Using the Setup Script (Recommended)
-We provide a setup script that handles virtual environment creation, dependency installation, and GPU detection:
+We provide setup scripts for both Unix-based systems and Windows:
 
+**For Windows:**
+```powershell
+# Open PowerShell as Administrator and first enable script execution (if not already enabled)
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Run the setup script
+.\setup.ps1
+```
+
+**For Unix-based systems (Linux/macOS):**
 ```bash
 # Make the script executable
 chmod +x setup.sh
@@ -152,7 +162,7 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-The setup script will:
+The setup scripts will:
 - Create and activate a Python virtual environment
 - Check for GPU availability
 - Install appropriate dependencies based on your choice:
@@ -164,9 +174,16 @@ The setup script will:
 
 For production:
 ```bash
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+
+# Activate virtual environment
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
+# On Unix-based systems:
+source venv/bin/activate
 
 # Install production dependencies
 pip install -r requirements.txt
@@ -174,17 +191,19 @@ pip install -r requirements.txt
 
 For development:
 ```bash
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+
+# Activate virtual environment
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
+# On Unix-based systems:
+source venv/bin/activate
 
 # Install development dependencies
 pip install -r requirements-dev.txt
-```
-
-Frontend dependencies:
-```bash
-npm install
 ```
 
 ### **3. Environment Setup**
