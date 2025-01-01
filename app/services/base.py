@@ -86,13 +86,13 @@ class BaseService(Generic[T]):
     async def get_by_id(self, item_id: str) -> Optional[T]:
         """Retrieve an item by its ID."""
         try:
-            coll = await database.get_collection(self.collection)
+            coll = await database.get_collection(self.collection_name)
             document = await coll.find_one({"_id": ObjectId(item_id)})
             if document:
                 return self.model_class(**document)
             return None
         except Exception as e:
-            logger.error(f"Error retrieving {self.collection.value}: {e}")
+            logger.error(f"Error retrieving {self.collection_name}: {e}")
             raise
 
     async def update(self, item_id: str, item: T) -> bool:
@@ -105,7 +105,7 @@ class BaseService(Generic[T]):
             if "_id" in update_data:
                 del update_data["_id"]
             
-            coll = await database.get_collection(self.collection)
+            coll = await database.get_collection(self.collection_name)
             result = await coll.update_one(
                 {"_id": ObjectId(item_id)},
                 {"$set": update_data}
@@ -113,24 +113,24 @@ class BaseService(Generic[T]):
             
             success = result.modified_count > 0
             if success:
-                logger.info(f"Updated {self.collection.value} with ID: {item_id}")
+                logger.info(f"Updated {self.collection_name} with ID: {item_id}")
             return success
         except Exception as e:
-            logger.error(f"Error updating {self.collection.value}: {e}")
+            logger.error(f"Error updating {self.collection_name}: {e}")
             raise
 
     async def delete(self, item_id: str) -> bool:
         """Delete an item by its ID."""
         try:
-            coll = await database.get_collection(self.collection)
+            coll = await database.get_collection(self.collection_name)
             result = await coll.delete_one({"_id": ObjectId(item_id)})
             
             success = result.deleted_count > 0
             if success:
-                logger.info(f"Deleted {self.collection.value} with ID: {item_id}")
+                logger.info(f"Deleted {self.collection_name} with ID: {item_id}")
             return success
         except Exception as e:
-            logger.error(f"Error deleting {self.collection.value}: {e}")
+            logger.error(f"Error deleting {self.collection_name}: {e}")
             raise
 
     async def search_similar(
@@ -143,7 +143,7 @@ class BaseService(Generic[T]):
         try:
             query_vector = await self.generate_embedding(query_text)
             
-            coll = await database.get_collection(self.collection)
+            coll = await database.get_collection(self.collection_name)
             
             pipeline = [
                 {
@@ -182,5 +182,5 @@ class BaseService(Generic[T]):
             results = await coll.aggregate(pipeline).to_list(length=limit)
             return results
         except Exception as e:
-            logger.error(f"Error searching {self.collection.value}: {e}")
+            logger.error(f"Error searching {self.collection_name}: {e}")
             raise

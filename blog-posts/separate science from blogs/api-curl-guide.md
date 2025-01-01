@@ -194,7 +194,7 @@ This command searches through both scientific studies and news articles to find 
 ### Starting a Chat About a Scientific Study
 
 ```bash
-curl -X POST "http://localhost:8000/chat/scientific-studies/65abc123def456789" \
+curl -X POST "http://localhost:8000/chat/scientific-studies/677349889d331bd57024132e" \
   -H "Content-Type: application/json" \
   -d '{
     "question": "What were the main findings about exercise and memory?"

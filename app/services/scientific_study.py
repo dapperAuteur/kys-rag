@@ -14,6 +14,7 @@ class ScientificStudyService(BaseService[ScientificStudy]):
     def __init__(self):
         """Initialize the scientific study service."""
         super().__init__(Collection.SCIENTIFIC_STUDIES, ScientificStudy)
+        self.collection_name = Collection.SCIENTIFIC_STUDIES
     
     async def fetch_doi_metadata(self, doi: str) -> Dict[str, Any]:
         """Fetch metadata for a DOI from CrossRef API."""
@@ -63,7 +64,10 @@ class ScientificStudyService(BaseService[ScientificStudy]):
             return [ScientificStudy(**doc) async for doc in cursor]
         except Exception as e:
             logger.error(f"Error searching by discipline: {e}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail="Could not complete search by discipline. Please try again."
+            )
 
     async def search_similar_studies(
         self,
@@ -85,7 +89,10 @@ class ScientificStudyService(BaseService[ScientificStudy]):
             ]
         except Exception as e:
             logger.error(f"Error searching similar scientific studies: {e}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail="Could not complete search of similar scientific studies. Please try again."
+            )
 
     async def update_citations(
         self,
