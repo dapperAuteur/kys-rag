@@ -103,7 +103,7 @@ class ScientificStudyService(BaseService[ScientificStudy]):
         try:
             coll = await self.get_collection()
             result = await coll.update_one(
-                {"_id": study_id},
+                {"_id": ObjectId(study_id)},
                 {
                     "$set": {
                         "citations": citations,
