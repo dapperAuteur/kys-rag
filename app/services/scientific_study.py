@@ -1,5 +1,7 @@
 from typing import List, Optional, Dict, Any
 import logging
+
+from bson import ObjectId
 from app.core.database import Collection
 from app.models.models import ScientificStudy, SearchResponse
 from .base import BaseService
