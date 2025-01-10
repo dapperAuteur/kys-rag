@@ -5,7 +5,9 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from app.core.config import get_settings
+from app.core.cache_manager import cache_manager
 import numpy as np
+import time
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -36,19 +38,46 @@ class VectorService:
     """
     
     def __init__(self):
-        """Initialize the vector service with required models and settings."""
+        """Initialize the vector service with required models."""
         logger.info("Initializing VectorService")
         self.settings = get_settings()
+
+        # Check cache status before loading models
+        cache_stats = cache_manager.get_cache_stats(force_check=True)
+        if cache_stats.get('total', {}).get('size_gb', 0) >= cache_manager.MAX_CACHE_SIZE_GB:
+            logger.warning("Cache size exceeds limit. Consider clearing cache.")
         
-        # Load language models
-        try:
-            logger.info(f"Loading model: {self.settings.MODEL_NAME}")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.settings.MODEL_NAME)
-            self.model = AutoModel.from_pretrained(self.settings.MODEL_NAME)
-            logger.info("Models loaded successfully")
-        except Exception as e:
-            logger.error(f"Failed to load models: {e}")
-            raise
+        # Load language models with retries
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                logger.info(f"Loading model: {self.settings.MODEL_NAME} (attempt {retry_count + 1})")
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.settings.MODEL_NAME,
+                    cache_dir=str(self.settings.MODEL_CACHE_DIR),
+                    local_files_only=False # Allow downloading if NOT in cache
+                )
+                self.model = AutoModel.from_pretrained(
+                    self.settings.MODEL_NAME,
+                    cache_dir=str(self.settings.MODEL_CACHE_DIR),
+                    local_files_only=False # Allow downloading if NOT in cache
+                )
+                logger.info("Models loaded successfully")
+                break
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    logger.error(f"Failed to load models: {e}")
+                    raise
+                logger.warning(f"Attempt {retry_count} failed, retrying...")
+
+                # Clear model cache if we're having issues
+                if retry_count == max_retries - 1:
+                    logger.warning("Clearing model cache and trying one last time")
+                    cache_manager.clear_cache("model")
+                time.sleep(1)  # Wait before retrying
         
         # Initialize metrics storage
         self.metrics: Dict[str, ProcessingMetrics] = {}

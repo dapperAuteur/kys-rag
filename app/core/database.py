@@ -1,7 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 from typing import Optional, Any, Dict
 import logging
-from app.config import get_settings
+from .config import get_settings
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -11,6 +11,7 @@ class Collection(str, Enum):
     SCIENTIFIC_STUDIES = "scientific_studies"
     ARTICLES = "articles"
     CHAT_HISTORY = "chat_history"
+    MIGRATIONS = "migrations"  # Added migrations collection
 
 class DatabaseManager:
     """Manages database connections and operations."""

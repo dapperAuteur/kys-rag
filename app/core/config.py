@@ -4,12 +4,31 @@ from functools import lru_cache
 from typing import Literal
 import logging
 import os
+from pathlib import Path
 
 class Settings(BaseSettings):
     """Application settings with validation."""
     
     # Environment
     ENV: str = Field(default="dev", description="Environment (dev/test/prod)")
+    
+    # Base Paths
+    APP_DIR: Path = Field(
+        default=Path(__file__).parent.parent,
+        description="Application root directory"
+    )
+    PROJECT_ROOT: Path = Field(
+        default=Path(__file__).parent.parent.parent,
+        description="Project root directory"
+    )
+    CACHE_DIR: Path = Field(
+        default=Path(__file__).parent.parent / "cache",
+        description="Base cache directory"
+    )
+    MODEL_CACHE_DIR: Path = Field(
+        default=Path(__file__).parent.parent / "cache" / "models",
+        description="Model cache directory"
+    )
     
     # MongoDB settings
     MONGODB_ATLAS_URI: str = Field(
@@ -96,6 +115,20 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        # Ensure cache directories exist
+        self.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        self.MODEL_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Set HuggingFace cache directory environment variable
+        os.environ["TRANSFORMERS_CACHE"] = str(self.MODEL_CACHE_DIR)
+        
+        # Log cache directory locations in debug mode
+        logging.debug(f"Cache directory: {self.CACHE_DIR}")
+        logging.debug(f"Model cache directory: {self.MODEL_CACHE_DIR}")
 
 @lru_cache()
 def get_settings() -> Settings:

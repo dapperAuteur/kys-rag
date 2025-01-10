@@ -2,6 +2,10 @@
 
 Welcome back! If you’ve followed along from Step 1, congratulations—you’ve already set up the foundation for our project. You’ve installed Python, Visual Studio Code, and the libraries we’ll use to process scientific studies and power our Retrieval-Augmented Generation (RAG) tool. Now, it’s time to bring our tool to life by building its **brain**—the backend.  
 
+Did you miss the beginning of the Science Clickbait Decoder blog series?
+Read Part 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0000).
+Read Part 2 Step 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0001). Part 2 Step 1 is when the coding starts.
+
 In this step, we’ll focus on creating the part of the tool that processes questions, retrieves information, and prepares the answers. This is where the magic happens, and by the end of this post, you’ll have a basic working backend to show off!  
 
 ---
@@ -151,3 +155,10 @@ Get ready to take your project to the next level. See you in the next post!
 ---
 
 *Excited about what’s coming? Share your progress so far and stay tuned for Step 3.*  
+
+*If you have any questions or need help, feel free to ask.*
+You may reach me by leaving a comment or clicking the chat bubble in the bottom right corner of the screen.
+
+Did you miss the beginning of the Science Clickbait Decoder blog series?
+Read Part 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0000).
+Read Part 2 Step 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0001). Part 2 Step 1 is when the coding starts.

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import logging
 from app.models.models import StatusResponse
 from app.core.database import database
-from app.config import get_settings
+from app.core.config import get_settings
 from app.api.routers import (
     scientific_study_router,
     article_router,

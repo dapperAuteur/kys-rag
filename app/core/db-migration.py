@@ -193,7 +193,7 @@ async def run_migration(db: AsyncIOMotorDatabase) -> None:
 
 if __name__ == "__main__":
     from motor.motor_asyncio import AsyncIOMotorClient
-    from app.config import get_settings
+    from app.core.config import get_settings
     
     async def main():
         settings = get_settings()

@@ -249,7 +249,41 @@ mypy .
 mkdocs serve
 ```
 
-### **6. Deploy**
+### **6. Run Cache Script
+
+# Clean files older than 7 days
+`python scripts/manage_cache.py --action cleanup --max-age 7d`
+
+# Clean files older than 24 hours
+`python scripts/manage_cache.py --action cleanup --max-age 24h`
+
+# Clean files older than 30 minutes
+`python scripts/manage_cache.py --action cleanup --max-age 30m`
+
+# View cleanup results in JSON:
+`python scripts/manage_cache.py --action cleanup --max-age 7d --format json`
+
+# Manual Clean-up
+`python scripts/manage_cache.py --action stats`
+
+# Clear model cache only
+`python scripts/manage_cache.py --action clear --cache-type model`
+
+# Clear all caches
+`python scripts/manage_cache.py --action clear --cache-type all`
+
+Get JSON output for automation:
+`python scripts/manage_cache.py --action stats --format json`
+
+Try clearing the cache and running the migration again:
+# Clear caches
+`python scripts/manage_cache.py --action clear`
+
+# Run migration
+`python -m app.migrations.run_migrations`
+
+
+### **7. Deploy**
 Follow deployment instructions for **Vercel** (frontend) and **Render/Fly.io** (backend).
 
 ---
