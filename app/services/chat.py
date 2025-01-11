@@ -95,22 +95,44 @@ class ChatService:
             if not study:
                 raise ValueError("Scientific study not found")
             
+            # Extract key findings with error handling
+            key_points = await self._extract_key_findings(study.text)
+            if not key_points:
+                key_points = ["No explicit findings section found"]
+            
+            # Extract methodology with default
+            methodology = await self._extract_methodology(study.text)
+            if not methodology:
+                methodology = "Methodology section not explicitly found"
+            
+            # Extract limitations with default
+            limitations = await self._extract_limitations(study.text)
+            if not limitations:
+                limitations = ["Limitations not explicitly stated"]
+            
+            # Format citation
+            citation = f"{', '.join(study.authors)} ({study.publication_date.year}). {study.title}. {study.journal}."
+            
+            # Create properly structured findings
             findings = {
-                "key_findings": await self._extract_key_findings(study.text),
-                "methodology": await self._extract_methodology(study.text),
-                "limitations": await self._extract_limitations(study.text),
-                "citation": f"{', '.join(study.authors)} ({study.publication_date.year}). {study.title}. {study.journal}."
+                "key_points": key_points,
+                "methodology": methodology,
+                "limitations": limitations,
+                "citation": citation
             }
             
-            # Create a focused response about the study
+            # Create complete response matching the expected model
             response = {
+                "status": "success",
                 "content_type": "scientific_study",
                 "title": study.title,
                 "findings": findings,
                 "relevant_section": await self._find_relevant_section(study.text, question),
-                "confidence_score": 0.85  # Add confidence score
+                "confidence_score": 0.85,  # Add confidence score
+                "analysis_timestamp": datetime.utcnow()
             }
             
+            logger.info(f"Successfully analyzed study {study_id}")
             return response
         except Exception as e:
             logger.error(f"Error analyzing scientific study: {e}")
