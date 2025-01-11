@@ -9,6 +9,7 @@ from app.models.pdf_document import PDFDocument
 from app.core.database import Collection, database
 from .base import BaseService
 from .pdf_processor import pdf_processor
+from .section_detector import section_detector
 from bson import ObjectId
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,10 @@ class PDFDocumentService(BaseService[PDFDocument]):
             text = await pdf_processor.extract_text(file_path)
             metadata = await pdf_processor.get_metadata(file_path)
 
+            # Extract sections and tables
+            sections = await section_detector.find_sections(text)
+            tables = await section_detector.extract_tables(text)
+
             # Determine topic from filename or metadata
             topic = self._determine_topic(metadata, original_filename)
             # if topic == 'uncategorized' and 'keywords' in metadata:
@@ -94,9 +99,10 @@ class PDFDocumentService(BaseService[PDFDocument]):
                 file_size=file_size,
                 md5_hash=md5_hash,
                 extracted_text=text,
-                # page_count=metadata.get('page_count', 1),
                 page_count=page_count,
                 pdf_metadata=metadata,
+                sections=sections,
+                tables=tables,
                 scientific_study_id=ObjectId(scientific_study_id) if scientific_study_id else None,
                 article_id=ObjectId(article_id) if article_id else None,
                 processing_status="completed",
