@@ -8,7 +8,8 @@ from app.api.routers import (
     scientific_study_router,
     article_router,
     search_router,
-    chat_router
+    chat_router,
+    pdf_router
 )
 
 # Configure logging
@@ -42,6 +43,7 @@ app.include_router(scientific_study_router)
 app.include_router(article_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+app.include_router(pdf_router)
 
 @app.get("/", response_model=StatusResponse)
 async def read_root():
