@@ -37,18 +37,18 @@ curl -X POST http://localhost:8000/scientific-studies/ \
     "status": "success",
     "message": "Scientific study created successfully",
     "details": {
-        "id": "65b123abc..."
+        "id": "6781fc091cdcaeb690223c95"
     }
 }
 ```
 
 ### Get Study
 ```bash
-curl -X GET http://localhost:8000/scientific-studies/678185cfea562bee76945b97
+curl -X GET http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95
 ```
 ```json
 {
-    "id": "678185cfea562bee76945b97",
+    "id": "6781fc091cdcaeb690223c95",
     "title": "AI in Healthcare",
     "text": "Study about AI applications in healthcare",
     "authors": ["John Doe", "Jane Smith"],
@@ -64,14 +64,14 @@ curl -X GET http://localhost:8000/scientific-studies/678185cfea562bee76945b97
 ```
 # NOT WORKING AS EXPECTED 
 ```
-% curl -X PUT http://localhost:8000/scientific-studies/678185cfea562bee76945b97/citations \
+% curl -X PUT http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95/citations \
 -H "Content-Type: application/json" \
 -d '["citation1", "citation2"]'
 {"detail":"Scientific study not found"}%
 ```
 ### Update Study Citations
 ```bash
-curl -X PUT http://localhost:8000/scientific-studies/678185cfea562bee76945b97/citations \
+curl -X PUT http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95/citations \
 -H "Content-Type: application/json" \
 -d '["citation1", "citation2"]'
 ```
@@ -103,7 +103,7 @@ curl -X POST http://localhost:8000/articles/ \
 ```
 ```json
 {
-    "id": "6781866aea562bee76945b98",
+    "id": "6781fd051cdcaeb690223c96",
     "title": "New AI Healthcare Breakthrough",
     "text": "Article about recent AI developments in healthcare",
     "author": "John Writer",
@@ -118,7 +118,7 @@ curl -X POST http://localhost:8000/articles/ \
 
 ### Add Claim to Article
 ```bash
-curl -X POST http://localhost:8000/articles/6781866aea562bee76945b98/claims \
+curl -X POST http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims \
 -H "Content-Type: application/json" \
 -d '{
     "text": "AI can diagnose cancer with 99% accuracy",
@@ -131,14 +131,14 @@ curl -X POST http://localhost:8000/articles/6781866aea562bee76945b98/claims \
     "status": "success",
     "message": "Claim added successfully",
     "details": {
-        "article_id": "6781866aea562bee76945b98"
+        "article_id": "6781fd051cdcaeb690223c96"
     }
 }
 ```
 
 ### Verify Claim
 ```bash
-curl -X PUT "http://localhost:8000/articles/6781866aea562bee76945b98/claims/0/verify?verification_notes=Found%20supporting%20evidence&confidence_score=0.9&verified=true"
+curl -X PUT "http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims/0/verify?verification_notes=Found%20supporting%20evidence&confidence_score=0.9&verified=true"
 ```
 ```json
 {
@@ -153,7 +153,7 @@ curl -X PUT "http://localhost:8000/articles/6781866aea562bee76945b98/claims/0/ve
 
 ### Link Study to Article
 ```bash
-curl -X POST http://localhost:8000/articles/6781866aea562bee76945b98/scientific-studies/678185cfea562bee76945b97
+curl -X POST http://localhost:8000/articles/6781fd051cdcaeb690223c96/scientific-studies/6781fc091cdcaeb690223c95
 ```
 ```json
 {
@@ -227,7 +227,7 @@ curl -X GET "http://localhost:8000/search/topic/AI%20Healthcare?content_type=art
 
 ### Find Related Content
 ```bash
-curl -X GET "http://localhost:8000/search/related/article/6781866aea562bee76945b98?limit=5"
+curl -X GET "http://localhost:8000/search/related/article/6781fd051cdcaeb690223c96?limit=5"
 ```
 ```json
 {
@@ -243,7 +243,7 @@ curl -X GET "http://localhost:8000/search/related/article/6781866aea562bee76945b
 curl -X POST http://localhost:8000/chat/messages \
 -H "Content-Type: application/json" \
 -d '{
-    "content_id": "678185cfea562bee76945b97",
+    "content_id": "6781fc091cdcaeb690223c95",
     "content_type": "scientific_study",
     "message": "What are the main findings?",
     "user_id": "user123"
@@ -262,7 +262,7 @@ Returned empty array instead of expected json.
 ```
 ### Get Chat History
 ```bash
-curl -X GET "http://localhost:8000/chat/history/scientific_study/678185cfea562bee76945b97?limit=50"
+curl -X GET "http://localhost:8000/chat/history/scientific_study/6781fc091cdcaeb690223c95?limit=50"
 ```
 ```json
 [
@@ -278,7 +278,7 @@ curl -X GET "http://localhost:8000/chat/history/scientific_study/678185cfea562be
 
 # NOT WORKING AS EXCPECTED
 ```
-% curl -X POST http://localhost:8000/chat/scientific-studies/678185cfea562bee76945b97 \
+% curl -X POST http://localhost:8000/chat/scientific-studies/6781fc091cdcaeb690223c95 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What methodology was used in this study?"
@@ -287,7 +287,7 @@ curl -X GET "http://localhost:8000/chat/history/scientific_study/678185cfea562be
 ```
 ### Analyze Scientific Study
 ```bash
-curl -X POST http://localhost:8000/chat/scientific-studies/678185cfea562bee76945b97 \
+curl -X POST http://localhost:8000/chat/scientific-studies/6781fc091cdcaeb690223c95 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What methodology was used in this study?"
@@ -311,7 +311,7 @@ curl -X POST http://localhost:8000/chat/scientific-studies/678185cfea562bee76945
 ```
 # NOT WORKING AS EXCPECTED
 ```
-% curl -X POST http://localhost:8000/chat/articles/6781866aea562bee76945b98 \
+% curl -X POST http://localhost:8000/chat/articles/6781fd051cdcaeb690223c96 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What claims does this article make about AI?"
@@ -320,7 +320,7 @@ curl -X POST http://localhost:8000/chat/scientific-studies/678185cfea562bee76945
 ```
 ### Analyze Article
 ```bash
-curl -X POST http://localhost:8000/chat/articles/6781866aea562bee76945b98 \
+curl -X POST http://localhost:8000/chat/articles/6781fd051cdcaeb690223c96 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What claims does this article make about AI?"

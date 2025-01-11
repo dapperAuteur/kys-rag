@@ -12,6 +12,7 @@ class Collection(str, Enum):
     ARTICLES = "articles"
     CHAT_HISTORY = "chat_history"
     MIGRATIONS = "migrations"  # Added migrations collection
+    PDF_DOCUMENTS = "pdf_documents"  # Add this line for PDF documents
 
 class DatabaseManager:
     """Manages database connections and operations."""
@@ -37,9 +38,10 @@ class DatabaseManager:
                 await self._client.admin.command('ping')
                 self._db = self._client[self.settings.ACTIVE_DATABASE_NAME]
                 
-                # Initialize collections
+                # Initialize collections including PDF_DOCUMENTS
                 for collection in Collection:
                     self._collections[collection] = self._db[collection]
+                    logger.info(f"Initialized collection: {collection.value}")
                 
                 logger.info(f"Successfully connected to MongoDB Atlas database: {self.settings.ACTIVE_DATABASE_NAME}")
             except Exception as e:
