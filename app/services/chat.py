@@ -37,12 +37,49 @@ class ChatService:
         """Get chat history for a specific content item."""
         try:
             coll = await database.get_collection(Collection.CHAT_HISTORY)
+
+            # Add logging to see what we're querying
+            logger.info(f"Fetching chat history for {content_type} {content_id}")
+        
+            # Fetch documents
             cursor = coll.find({
-                "content_id": ObjectId(content_id),
+                "content_id": content_id,
                 "content_type": content_type
             }).sort("timestamp", -1).limit(limit)
+
+            # Convert to list and log count
+            # OLD version
+            # messages = [ChatMessage(**doc) async for doc in cursor]
+
+            # NEW version
+            messages = []
+            async for doc in cursor:
+                try:
+                    # Ensure timestamp is present
+                    if "timestamp" not in doc:
+                        doc["timestamp"] = datetime.utcnow()
+                    
+                    # Create ChatMessage object
+                    message = ChatMessage(
+                        content_id=doc["content_id"],
+                        content_type=doc["content_type"],
+                        message=doc["message"],
+                        timestamp=doc["timestamp"],
+                        user_id=doc.get("user_id"),  # Optional field
+                        references=doc.get("references", [])  # Optional field with default
+                    )
+                    messages.append(message)
+                except Exception as e:
+                    logger.error(f"Error converting document to ChatMessage: {e}")
+                    continue
+        
+            logger.info(f"Found {len(messages)} messages")
+
+            if not messages:
+                logger.info(f"No chat history found for {content_type} {content_id}")
             
-            return [ChatMessage(**doc) async for doc in cursor]
+            # return [ChatMessage(**doc) async for doc in cursor]
+            return messages
         except Exception as e:
             logger.error(f"Error getting chat history: {e}")
             raise
@@ -58,15 +95,20 @@ class ChatService:
             if not study:
                 raise ValueError("Scientific study not found")
             
+            findings = {
+                "key_findings": await self._extract_key_findings(study.text),
+                "methodology": await self._extract_methodology(study.text),
+                "limitations": await self._extract_limitations(study.text),
+                "citation": f"{', '.join(study.authors)} ({study.publication_date.year}). {study.title}. {study.journal}."
+            }
+            
             # Create a focused response about the study
             response = {
                 "content_type": "scientific_study",
                 "title": study.title,
-                "key_findings": await self._extract_key_findings(study.text),
+                "findings": findings,
                 "relevant_section": await self._find_relevant_section(study.text, question),
-                "methodology": await self._extract_methodology(study.text),
-                "limitations": await self._extract_limitations(study.text),
-                "citation": f"{', '.join(study.authors)} ({study.publication_date.year}). {study.title}. {study.journal}."
+                "confidence_score": 0.85  # Add confidence score
             }
             
             return response
@@ -106,7 +148,7 @@ class ChatService:
                     {
                         "text": claim.text,
                         "verified": claim.verified,
-                        "confidence": claim.confidence_score,
+                        "confidence_score": claim.confidence_score,
                         "verification_notes": claim.verification_notes
                     }
                     for claim in article.claims
