@@ -37,6 +37,18 @@ class PDFDocument(BaseDocument):
         default="pending",
         description="Status of PDF processing: pending, processing, completed, failed"
     )
+
+    # Add new fields for sections and tables
+    sections: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Extracted sections from the document"
+    )
+    
+    tables: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Extracted tables with captions"
+    )
+    
     processing_error: Optional[str] = None
     processed_at: Optional[datetime] = None
     
