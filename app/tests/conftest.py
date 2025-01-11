@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from app.main import app
 from app.core.database import database, Collection
 import os
-from app.config import get_settings
+from app.core.config import get_settings
 
 # Set test environment
 os.environ["ENV"] = "test"

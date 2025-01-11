@@ -1,22 +1,69 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
-from app.models.models import Article, Claim, ScientificStudy, SearchResponse, StatusResponse
+from app.models.models import Article, Claim, ScientificStudy, SearchResponse, StatusResponse, ArticleCreate, ArticleResponse
 from app.services.services import article_service
 import logging
+from app.core.database import database
+from datetime import datetime, timezone
+from bson.codec_options import CodecOptions
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/articles", tags=["Articles"])
 
-@router.post("/", response_model=StatusResponse)
-async def create_article(article: Article):
-    """Create a new article."""
+@router.post("/", response_model=ArticleResponse)
+async def create_article(article: ArticleCreate):
+    """
+    Create a new article in the database.
+    
+    This endpoint handles:
+    - Converting the HttpUrl to a string for MongoDB storage
+    - Ensuring all dates are in UTC format
+    - Proper error handling and logging
+    """
     try:
-        article_id = await article_service.create_with_metadata(article)
-        return StatusResponse(
-            status="success",
-            message="Article created successfully",
-            details={"id": article_id}
+        logger.info(f"Creating article: {article.title}")
+        
+        # Get the articles collection with timezone awareness
+        collection = await database.get_articles_collection()
+        collection = collection.with_options(
+            codec_options=CodecOptions(tz_aware=True)
         )
+        
+        # Convert the article to a dictionary, handling HttpUrl conversion
+        article_dict = article.model_dump()
+
+        # Ensure all dates are in UTC
+        # article_dict["publication_date"] = article.publication_date
+        current_time = datetime.now(timezone.utc)
+
+        article_dict.update({
+            "created_at": current_time,
+            "updated_at": current_time
+        })
+
+        logger.info(f"Prepared article data: {article_dict}")
+        
+        # Insert into database
+        result = await collection.insert_one(article_dict)
+        
+        # Get the created article
+        created_article = await collection.find_one({"_id": result.inserted_id})
+        
+        if not created_article:
+            logger.error("Article not found after creation")
+            raise HTTPException(status_code=404, detail="Article not found after creation")
+        
+        # Convert MongoDB _id to string for the response
+        created_article["id"] = str(created_article.pop("_id"))
+        
+        logger.info(f"Successfully created article with ID: {created_article['id']}")
+        return ArticleResponse(**created_article)
+        
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+        
     except Exception as e:
         logger.error(f"Error creating article: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -120,6 +167,28 @@ async def get_related_scientific_studies(article_id: str):
         logger.error(f"Error getting related scientific studies: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/status", response_model=StatusResponse)
+async def get_status():
+    """Get the current status of the articles service"""
+    try:
+        collection = await database.get_articles_collection()
+        count = await collection.count_documents({})
+        
+        return StatusResponse(
+            status="healthy",
+            message="Articles service is running",
+            details={
+                "total_articles": count,
+                "last_checked": datetime.now(timezone.utc).isoformat()
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error checking service status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not retrieve service status"
+        )
+    
 @router.post("/{article_id}/scientific-studies/{study_id}", response_model=StatusResponse)
 async def link_scientific_study(article_id: str, study_id: str):
     """Link a scientific study to an article."""

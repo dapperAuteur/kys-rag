@@ -1,36 +1,41 @@
 # Web Framework and API
-fastapi>=0.68.0
-uvicorn>=0.15.0
-
-# Database
-motor>=3.1.1
-pymongo>=4.3.3
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
 
 # Environment and Settings
+pydantic>=2.5.3
+pydantic-settings>=2.1.0
 python-dotenv>=0.19.0
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
 
-# Type Checking and Validation
-typing-extensions>=4.5.0
-python-multipart>=0.0.5
+# Database
+motor>=3.3.2
+pymongo>=4.6.1
 
 # Vector Operations and Similarity Search
 faiss-cpu>=1.7.4    # For vector similarity search
-numpy>=1.21.0       # Required by FAISS
+numpy<2.0.0        # Pin to 1.x for compatibility
 
 # NLP and Text Processing
-transformers>=4.30.0  # Includes access to SciBERT model
-torch>=2.0.0         # Required by transformers
-beautifulsoup4>=4.9.3 # For web scraping
+transformers>=4.37.2  # Includes access to SciBERT model
+torch>=2.1.2         # Required by transformers
+sentence-transformers>=2.2.2  # For enhanced embeddings
+beautifulsoup4>=4.12.2  # For web scraping
 
-# Testing
-pytest>=7.0.0
-pytest-asyncio>=0.18.0  # For testing async code
+# HTTP Clients
+aiohttp>=3.9.1
+httpx>=0.26.0
 
 # Logging and Monitoring
-python-json-logger>=2.0.0
+python-json-logger>=2.0.7
 
-# Optional but recommended for development
-black>=22.3.0       # Code formatting
-isort>=5.10.0       # Import sorting
+# Type Checking and Validation
+typing-extensions>=4.5.0
+
+# Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# PDF Handling
+PyPDF2>=3.0.0
+pdfplumber>=0.10.0

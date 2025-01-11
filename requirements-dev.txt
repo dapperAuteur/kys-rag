@@ -1,0 +1,28 @@
+# Install production requirements
+-r requirements.txt
+
+# Testing
+pytest>=7.4.4
+pytest-asyncio>=0.23.3
+pytest-cov>=4.1.0
+
+# Type Checking
+mypy>=1.8.0
+types-requests>=2.31.0.20240106
+types-beautifulsoup4>=4.12.0.20240106
+
+# Code Quality
+black>=24.1.0       # Code formatting
+isort>=5.13.2       # Import sorting
+flake8>=7.0.0       # Linting
+pylint>=3.0.3       # Additional static analysis
+
+# Documentation
+mkdocs>=1.5.3
+mkdocs-material>=9.5.3
+
+# Development Tools
+pre-commit>=3.5.0          # Git hooks
+ipython>=8.12.0           # Enhanced Python REPL
+jupyter>=1.0.0            # Notebook support
+debugpy>=1.8.0            # Debugging support

@@ -6,6 +6,7 @@ from .article import article_service
 from .claim import claim_service
 from .chat import chat_service
 from .search import search_service
+from .vector_service import vector_service
 
 __all__ = [
     'BaseService',
@@ -13,5 +14,6 @@ __all__ = [
     'article_service',
     'claim_service',
     'chat_service',
-    'search_service'
+    'search_service',
+    'vector_service'
 ]

@@ -169,5 +169,16 @@ class ArticleService(BaseService[Article]):
             logger.error(f"Error searching similar articles: {e}")
             raise
 
+    # article.py
+    async def search_by_topic(self, topic: str, limit: int = 10) -> List[Article]:
+        """Search for articles by topic."""
+        try:
+            coll = await self.get_collection()
+            cursor = coll.find({"topic": topic}).limit(limit)
+            return [Article(**doc) async for doc in cursor]
+        except Exception as e:
+            logger.error(f"Error searching by topic: {e}")
+            raise
+
 # Create singleton instance
 article_service = ArticleService()

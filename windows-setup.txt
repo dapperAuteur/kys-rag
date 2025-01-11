@@ -1,0 +1,99 @@
+# PowerShell script for setting up the Scientific RAG Tool
+# Compatible with Windows environments
+
+# Function to write colored output
+function Write-ColorOutput($ForegroundColor) {
+    $fc = $host.UI.RawUI.ForegroundColor
+    $host.UI.RawUI.ForegroundColor = $ForegroundColor
+    if ($args) {
+        Write-Output $args
+    }
+    $host.UI.RawUI.ForegroundColor = $fc
+}
+
+function Test-GPU {
+    try {
+        $result = python -c "import torch; print(torch.cuda.is_available())"
+        return $result -eq "True"
+    }
+    catch {
+        return $false
+    }
+}
+
+Write-ColorOutput Blue "Scientific RAG Tool Setup"
+Write-Output "=============================="
+
+# Check Python version
+$pythonVersion = python --version
+Write-ColorOutput Blue "Detected Python version:"
+Write-Output $pythonVersion
+
+# Create virtual environment if it doesn't exist
+if (-not (Test-Path "venv")) {
+    Write-ColorOutput Blue "`nCreating virtual environment..."
+    python -m venv venv
+}
+
+# Activate virtual environment
+Write-ColorOutput Blue "`nActivating virtual environment..."
+& .\venv\Scripts\Activate.ps1
+
+# Function to install dependencies
+function Install-Dependencies {
+    param (
+        [string]$InstallType
+    )
+    
+    Write-ColorOutput Blue "`nInstalling dependencies..."
+    
+    # Upgrade pip
+    python -m pip install --upgrade pip
+    
+    if ($InstallType -eq "dev") {
+        Write-ColorOutput Green "Installing development dependencies..."
+        pip install -r requirements-dev.txt
+    }
+    else {
+        Write-ColorOutput Green "Installing production dependencies..."
+        pip install -r requirements.txt
+    }
+    
+    # Check GPU availability and install appropriate torch version
+    if (Test-GPU) {
+        Write-ColorOutput Green "`nGPU detected! Installing GPU-enabled PyTorch..."
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    }
+    else {
+        Write-ColorOutput Red "`nNo GPU detected. Installing CPU-only PyTorch..."
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+    }
+}
+
+# Present options to user
+Write-Output "`nPlease select installation type:"
+Write-Output "1) Production (minimal dependencies)"
+Write-Output "2) Development (includes testing and development tools)"
+$choice = Read-Host "Enter choice [1-2]"
+
+switch ($choice) {
+    1 { Install-Dependencies "prod" }
+    2 { Install-Dependencies "dev" }
+    default {
+        Write-ColorOutput Red "Invalid choice. Exiting."
+        exit 1
+    }
+}
+
+# Create .env file if it doesn't exist
+if (-not (Test-Path ".env")) {
+    Write-ColorOutput Blue "`nCreating .env file..."
+    Copy-Item .env.example .env
+    Write-ColorOutput Green "Created .env file. Please update it with your configurations."
+}
+
+Write-ColorOutput Green "`nSetup complete!"
+Write-Output "To activate the virtual environment in a new terminal, run:"
+Write-ColorOutput Blue ".\venv\Scripts\Activate.ps1"
+Write-Output "`nTo start the development server, run:"
+Write-ColorOutput Blue "uvicorn app.main:app --reload"

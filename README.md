@@ -132,6 +132,7 @@ This RAG tool is designed to combat misinformation by providing a clear and unbi
 ---
 
 ## Getting Started
+
 ### **1. Clone the Repository**
 ```bash
 git clone https://github.com/your-username/scientific-rag-tool.git
@@ -139,26 +140,150 @@ cd scientific-rag-tool
 ```
 
 ### **2. Install Dependencies**
-Backend:
-```bash
-pip install -r requirements.txt
-```
-Frontend:
-```bash
-npm install
+
+#### Option 1: Using the Setup Script (Recommended)
+We provide setup scripts for both Unix-based systems and Windows:
+
+**For Windows:**
+```powershell
+# Open PowerShell as Administrator and first enable script execution (if not already enabled)
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Run the setup script
+.\setup.ps1
 ```
 
-### **3. Run the Application**
-- Start the FastAPI backend:
+**For Unix-based systems (Linux/macOS):**
+```bash
+# Make the script executable
+chmod +x setup.sh
+
+# Run the setup script
+./setup.sh
+```
+
+The setup scripts will:
+- Create and activate a Python virtual environment
+- Check for GPU availability
+- Install appropriate dependencies based on your choice:
+  - Production: Minimal dependencies for running the application
+  - Development: Includes testing tools, documentation generators, and development utilities
+- Create a `.env` file from template
+
+#### Option 2: Manual Installation
+
+For production:
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
+# On Unix-based systems:
+source venv/bin/activate
+
+# Install production dependencies
+pip install -r requirements.txt
+```
+
+For development:
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
+# On Unix-based systems:
+source venv/bin/activate
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+### **3. Environment Setup**
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Edit `.env` with your configuration values.
+
+### **4. Run the Application**
+Start the FastAPI backend:
 ```bash
 uvicorn app.main:app --reload
 ```
-- Start the Next.js frontend:
+
+Start the Next.js frontend:
 ```bash
 npm run dev
 ```
 
-### **4. Deploy**
+### **5. Development Tools**
+When installed with development dependencies (`requirements-dev.txt`), you have access to:
+- **Testing**: `pytest` for running tests
+- **Code Formatting**: `black` and `isort` for consistent code style
+- **Type Checking**: `mypy` for static type analysis
+- **Documentation**: `mkdocs` for generating documentation
+- **Debugging**: Support through `debugpy`
+- **Notebooks**: Jupyter notebooks for experimentation
+
+Example development commands:
+```bash
+# Run tests
+pytest
+
+# Format code
+black .
+isort .
+
+# Type checking
+mypy .
+
+# Generate documentation
+mkdocs serve
+```
+
+### **6. Run Cache Script
+
+# Clean files older than 7 days
+`python scripts/manage_cache.py --action cleanup --max-age 7d`
+
+# Clean files older than 24 hours
+`python scripts/manage_cache.py --action cleanup --max-age 24h`
+
+# Clean files older than 30 minutes
+`python scripts/manage_cache.py --action cleanup --max-age 30m`
+
+# View cleanup results in JSON:
+`python scripts/manage_cache.py --action cleanup --max-age 7d --format json`
+
+# Manual Clean-up
+`python scripts/manage_cache.py --action stats`
+
+# Clear model cache only
+`python scripts/manage_cache.py --action clear --cache-type model`
+
+# Clear all caches
+`python scripts/manage_cache.py --action clear --cache-type all`
+
+Get JSON output for automation:
+`python scripts/manage_cache.py --action stats --format json`
+
+Try clearing the cache and running the migration again:
+# Clear caches
+`python scripts/manage_cache.py --action clear`
+
+# Run migration
+`python -m app.migrations.run_migrations`
+
+
+### **7. Deploy**
 Follow deployment instructions for **Vercel** (frontend) and **Render/Fly.io** (backend).
 
 ---
