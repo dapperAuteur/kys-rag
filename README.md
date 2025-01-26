@@ -301,4 +301,4 @@ https://i.brandanthonymcdonald.com/portfolio
 
 This README.md provides a comprehensive overview of the project, technical stack, features, deployment, and strengths/weaknesses for potential contributors and employers. Let me know if you'd like to refine or expand any sections!
 
-Made with ❤️ by [BAM](https://brandanthonymcdonald.com/)
+Made with ❤️ by [BAM](https://i.brandanthonymcdonald.com/portfolio)
