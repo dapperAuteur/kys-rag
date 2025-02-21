@@ -297,6 +297,7 @@ Contributions are welcome! Please open an issue or submit a pull request for imp
 For questions or inquiries, reach out at **a@awews.com**.
 Chat with Brand Anthony McDonald in real-time by visiting
 https://i.brandanthonymcdonald.com/portfolio
+or by visiting https://l.awews.com/merch to purchase a shirt, hoodie, stickers, etc.
 ```
 
 This README.md provides a comprehensive overview of the project, technical stack, features, deployment, and strengths/weaknesses for potential contributors and employers. Let me know if you'd like to refine or expand any sections!
