@@ -88,6 +88,10 @@ class ScientificStudy(BaseDocument):
     citations: List[str] = Field(default_factory=list)
     abstract: Optional[str] = None
     peer_reviewed: bool = Field(default=True)
+    section_embeddings: Dict[str, List[float]] = Field(
+        default_factory=dict,
+        description="Vector embeddings for each section"
+    )
 
 class Claim(BaseModel):
     """Represents a scientific claim made in an article"""

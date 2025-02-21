@@ -5,6 +5,25 @@ from typing import Optional, List, Dict, Union, Any
 from datetime import datetime
 from .models import PyObjectId, BaseDocument
 
+class PDFUploadRequest(BaseModel):
+    """Request model for PDF upload endpoint."""
+    title: str
+    authors: List[str]
+    publication_date: datetime
+    journal: str
+    discipline: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Example Study",
+                "authors": ["John Doe", "Jane Smith"],
+                "publication_date": "2024-01-20T00:00:00Z",
+                "journal": "Nature",
+                "discipline": "Biology"
+            }
+        }
+        
 class PDFDocument(BaseDocument):
     """
     Represents a PDF document in the system.
@@ -48,7 +67,7 @@ class PDFDocument(BaseDocument):
         default_factory=list,
         description="Extracted tables with captions"
     )
-    
+
     processing_error: Optional[str] = None
     processed_at: Optional[datetime] = None
     

@@ -4,6 +4,7 @@ import logging
 from bson import ObjectId
 from app.core.database import Collection
 from app.models.models import ScientificStudy, SearchResponse
+from app.models.pdf_document import PDFDocument
 from .base import BaseService
 import aiohttp
 from datetime import datetime
@@ -116,6 +117,101 @@ class ScientificStudyService(BaseService[ScientificStudy]):
             return result.modified_count > 0
         except Exception as e:
             logger.error(f"Error updating citations: {e}")
+            raise
+
+    async def create_with_sections(self, study: ScientificStudy) -> str:
+        """Create study with section-level embeddings."""
+        # Generate embeddings for each section
+        for section_name, section_text in study.sections.items():
+            embedding = await self.generate_embedding(section_text)
+            study.section_embeddings[section_name] = embedding
+            
+        return await self.create(study)
+
+    async def search_sections(
+        self,
+        query_text: str,
+        section_type: str,
+        limit: int = 10,
+        min_score: float = 0.5
+    ) -> List[SearchResponse]:
+        """Search for similar sections across studies."""
+        query_vector = await self.generate_embedding(query_text)
+        
+        pipeline = [
+            {
+                "$match": {
+                    f"sections.{section_type}": {"$exists": True}
+                }
+            },
+            {
+            "$addFields": {
+                "similarity": {
+                    "$let": {
+                        "vars": {
+                            "dotProduct": {
+                                "$reduce": {
+                                    "input": {"$zip": {"inputs": [f"$section_embeddings.{section_type}", query_vector]}},
+                                    "initialValue": 0.0,
+                                    "in": {
+                                        "$add": [
+                                            "$$value",
+                                            {"$multiply": [
+                                                {"$arrayElemAt": ["$$this", 0]},
+                                                {"$arrayElemAt": ["$$this", 1]}
+                                            ]}
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "in": {"$min": [1.0, {"$max": [0.0, "$$dotProduct"]}]}
+                    }
+                }
+            }
+        },
+            {"$match": {"similarity": {"$gte": min_score}}},
+            {"$sort": {"similarity": -1}},
+            {"$limit": limit}
+        ]
+        
+        coll = await self.get_collection()
+        results = await coll.aggregate(pipeline).to_list(length=limit)
+        return [
+            SearchResponse(
+                content=ScientificStudy(**{k:v for k,v in doc.items() if k != "similarity"}),
+                score=doc["similarity"],
+                content_type="scientific_study"
+            )
+            for doc in results
+        ]
+    
+    # app/services/scientific_study.py - Add section embeddings during creation
+
+    async def create_from_pdf(self, pdf_document: PDFDocument) -> str:
+        """Create scientific study with section embeddings from PDF."""
+        try:
+            # Generate embeddings for sections
+            section_embeddings = {}
+            for section_name, section_text in pdf_document.sections.items():
+                embedding = await self.generate_embedding(section_text)
+                section_embeddings[section_name] = embedding
+
+            study = ScientificStudy(
+                title=pdf_document.title,
+                text=pdf_document.extracted_text,
+                sections=pdf_document.sections,
+                section_embeddings=section_embeddings,
+                topic=pdf_document.topic,
+                pdf_id=pdf_document.id
+            )
+            
+            study_id = await self.create(study)
+            logger.info(f"Created scientific study with ID: {study_id}")
+            return study_id
+
+        except Exception as e:
+            logger.error(f"Error creating scientific study: {e}")
             raise
 
 # Create singleton instance

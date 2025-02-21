@@ -12,12 +12,12 @@ class SectionDetector:
     def __init__(self):
         # Common section headers in scientific papers
         self.section_patterns = {
-            'abstract': r'abstract|summary',
-            'introduction': r'introduction|background',
-            'methods': r'methods|methodology|materials and methods',
-            'results': r'results|findings',
-            'discussion': r'discussion',
-            'conclusion': r'conclusion|conclusions',
+            'abstract': r'(?i)^(?:abstract|summary|synopsis)(?:\s|:|$)',
+            'introduction': r'(?i)^(?:introduction|background)(?:\s|:|$)',
+            'methods': r'(?i)^(?:methods|methodology|materials\s+and\s+methods|experimental\s+procedures)(?:\s|:|$)',
+            'results': r'(?i)^(?:results|findings|experimental\s+results)(?:\s|:|$)',
+            'discussion': r'(?i)^(?:discussion|interpretation|general\s+discussion)(?:\s|:|$)',
+            'conclusion': r'(?i)^(?:conclusion|conclusions|final\s+remarks)(?:\s|:|$)',
             'references': r'references|bibliography'
         }
         

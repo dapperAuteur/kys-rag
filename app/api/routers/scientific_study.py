@@ -94,6 +94,28 @@ async def search_scientific_studies(
     except Exception as e:
         logger.error(f"Error searching scientific studies: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+# app/api/routers/scientific_study.py
+
+@router.post("/search/{section_type}", response_model=List[SearchResponse])
+async def search_study_sections(
+    section_type: str,
+    query_text: str = Query(..., description="Search query text"),  # Make query_text a query param
+    limit: Optional[int] = Query(default=10),
+    min_score: Optional[float] = Query(default=0.5)
+):
+    """Search for specific sections across studies."""
+    try:
+        results = await scientific_study_service.search_sections(
+            query_text=query_text,
+            section_type=section_type,
+            limit=limit,
+            min_score=min_score
+        )
+        return results
+    except Exception as e:
+        logger.error(f"Error searching sections: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/discipline/{discipline}", response_model=List[ScientificStudy])
 async def get_scientific_studies_by_discipline(

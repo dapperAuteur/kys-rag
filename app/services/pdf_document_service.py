@@ -8,6 +8,7 @@ from pathlib import Path
 from app.models.pdf_document import PDFDocument
 from app.core.database import Collection, database
 from .base import BaseService
+from .scientific_study import scientific_study_service
 from .pdf_processor import pdf_processor
 from .section_detector import section_detector
 from bson import ObjectId
@@ -112,6 +113,9 @@ class PDFDocumentService(BaseService[PDFDocument]):
             # Store in database
             document_id = await self.create(document)
             logger.info(f"Stored PDF document with ID: {document_id}")
+
+            # Create scientific study from PDF
+            await scientific_study_service.create_from_pdf(document)
             
             # Get and return the stored document
             return await self.get_by_id(document_id)

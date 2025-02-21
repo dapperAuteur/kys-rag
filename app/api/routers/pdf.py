@@ -1,12 +1,12 @@
 # app/api/routers/pdf.py
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from typing import Dict, Optional
 import logging
 from app.services.pdf_processor import pdf_processor
 from app.services.pdf_document_service import pdf_document_service
 from app.models.models import StatusResponse
-from app.models.pdf_document import PDFDocument, PDFUploadResponse
+from app.models.pdf_document import PDFDocument, PDFUploadResponse, PDFUploadRequest
 import tempfile
 import os
 from pathlib import Path
@@ -17,8 +17,14 @@ router = APIRouter(prefix="/pdf", tags=["PDF Processing"])
 @router.post("/upload", response_model=PDFUploadResponse)
 async def upload_pdf(
     file: UploadFile = File(...),
+    title: str = Form(...),
+    authors: str = Form(...),
+    publication_date: str = Form(...),
+    journal: str = Form(...),
+    discipline: str = Form(...),
     scientific_study_id: Optional[str] = Form(None),
-    article_id: Optional[str] = Form(None)
+    article_id: Optional[str] = Form(None),
+    metadata: PDFUploadRequest = Depends()
 ):
     """
     Upload and process a PDF file, storing its content in the database.
@@ -31,18 +37,39 @@ async def upload_pdf(
     Returns:
         PDFUploadResponse with document ID and status
     """
+
+    """Upload and process a PDF file."""
+    import json
+
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="File must be a PDF")
     
     try:
         logger.info(f"Processing PDF upload: {file.filename}")
         
+         # Parse authors from JSON string
+        try:
+            authors_list = json.loads(authors)
+            if not isinstance(authors_list, list):
+                raise ValueError("Authors must be an array")
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Authors must be a valid JSON array")
+
+        metadata = PDFUploadRequest(
+            title=title,
+            authors=authors_list,
+            publication_date=publication_date,
+            journal=journal,
+            discipline=discipline
+        )
+
         # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
             tmp_path = Path(tmp_file.name)
             # Write uploaded file to temp file
             content = await file.read()
             tmp_file.write(content)
+            tmp_path = tmp_file.name
         
         try:
             # Process and store the PDF
@@ -50,7 +77,8 @@ async def upload_pdf(
                 tmp_path,
                 file.filename,
                 scientific_study_id,
-                article_id
+                article_id,
+                metadata
             )
             
             return PDFUploadResponse(
