@@ -9,7 +9,7 @@ When we tried to search for articles about "exercise brain health", our app show
 {"detail":"'ScientificStudyService' object has no attribute 'collection'"}
 ```
 
-Think of this like trying to open a drawer that doesn't exist. We told our app to look for something in a drawer labeled 'collection', but we never created that drawer!
+The computer is telling me "You're trying to open a door (collection) that doesn't exist.". We told our app to look for something behind a door labeled 'collection', but we never created that door! Yes, that's a problem. (how do we prevent this from happening?)
 
 ## Why This Matters
 
@@ -25,7 +25,7 @@ Our app has several main parts:
 1. **BaseService**: The foundation that all our other services build on
 2. **ScientificStudyService**: Handles scientific papers
 3. **ArticleService**: Manages news articles and blog posts
-4. **SearchService**: Helps find content across our whole app
+4. **SearchService**: Helps find content across the entire app
 5. **DatabaseManager**: Keeps track of all our data
 
 It's like a library where:
@@ -137,3 +137,28 @@ Remember: Good error handling isn't just about fixing bugs - it's about making y
 
 ---
 Next time, we'll look at how to make our search results even better. Stay tuned!
+
+Did you miss the beginning of the Science Clickbait Decoder blog series?
+Read Part 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0000). We tell the story about why we're building the tool.
+
+Read Part 2 Step 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0001). Part 2 Step 1 is when the coding starts.
+
+Read Step 2 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0002). In Step 2 we create the FastAPI, add HuggingFace's SciBERT Model, and connect the backend to FAISS.
+
+Read Step 3 [HERE](https://i.til.show/python-fastapi-huggingface-faiss-science-clickbait-decoder-step-3). In Step 3 we add a MongoDB on Cloud Atlas to store data and setup a local MongoDB instance for back.
+
+Read Step 4 [HERE](https://i.til.show/refactor-python-fastapi-huggingface-faiss-science-clickbait-decoder-step-4). In Step 4 we create separate collections for Scientific Studies and Articles.
+
+*Excited about what’s coming? Share your progress so far and stay tuned for what's next.*  
+
+*If you have any questions or need help, feel free to ask.*
+You may reach me by leaving a comment or clicking the chat bubble in the bottom right corner of the screen.
+
+## Contact
+For questions or inquiries, reach out at **a@awews.com**.
+Chat with Brand Anthony McDonald in real-time by visiting
+https://i.brandanthonymcdonald.com/portfolio
+```
+Text "CENT" to 833.752.8102 to join me on my journey to becoming the world's fastest centenarian.
+
+Made with ❤️ by [BAM](https://i.brandanthonymcdonald.com/portfolio)

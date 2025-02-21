@@ -1,25 +1,32 @@
 ### **Step 2: Building the Brain of the Science Decoder Tool**  
 
-Welcome back! If you’ve followed along from Step 1, congratulations—you’ve already set up the foundation for our project. You’ve installed Python, Visual Studio Code, and the libraries we’ll use to process scientific studies and power our Retrieval-Augmented Generation (RAG) tool. Now, it’s time to bring our tool to life by building its **brain**—the backend.  
+Welcome back! Congratulations to everyone that's followed along from Step 1. We’ve set up the foundation for our project.
+What's included in the foundation:
+- You’ve installed:
+  - Python,
+  - Visual Studio Code,
+  - and the libraries we’ll use to process scientific studies and power our Retrieval-Augmented Generation (RAG) tool.
+  
+Now, we build the **brain**, (server,api and backend), to bring the Science Decoder tool to life.  
 
 Did you miss the beginning of the Science Clickbait Decoder blog series?
-Read Part 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0000).
+Read Part 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0000). Part 1 is where talk about what we're going to do.
 Read Part 2 Step 1 [HERE](https://i.til.show/decoding-clickbait-science-articles-with-ai-0001). Part 2 Step 1 is when the coding starts.
 
-In this step, we’ll focus on creating the part of the tool that processes questions, retrieves information, and prepares the answers. This is where the magic happens, and by the end of this post, you’ll have a basic working backend to show off!  
+Today we’ll focus on developing the brain. The brain processes questions, retrieves information, and prepares the answers. This is where the magic happens. We’ll have a basic working backend to show off by the end of this post.  
 
 ---
 
 ### **What We’ll Do in Step 2**  
-Here’s what’s on the agenda today:  
-1. **Create a Backend with FastAPI**: This lightweight framework will serve as the brain of our tool.  
-2. **Integrate Hugging Face’s SciBERT Model**: This pre-trained AI will help us summarize and explain scientific studies.  
-3. **Connect the Backend to FAISS**: This will make retrieving the right chunks of data fast and efficient.  
+Today's Agenda:  
+1. **Create a Backend with FastAPI**: FastAPI is a lightweight framework that will serve as the brain of our tool.  
+2. **Integrate Hugging Face’s SciBERT Model**: Hugging Face's SciBERT Model is a pre-trained AI. It'll help us summarize and explain scientific studies.  
+3. **Connect the Backend to FAISS**: Connecting the backend to FAISS will make retrieving the right chunks of data fast and efficient.  
 
 ---
 
 ### **Why This Step Matters**  
-Think of the backend as the command center for your tool. It processes user requests, finds the most relevant data, and returns clear, accurate answers. Without it, our tool is just an idea with no way to function.  
+Think of the backend as the command center and **brains** for our tool. It processes user requests and finds the most relevant data. Then, it returns clear and accurate answers, hopefully. It's a computer and is only as good as the instructions it's given. Our tool is just an idea with no way to function without the **brains**.  
 
 ---
 
@@ -27,24 +34,24 @@ Think of the backend as the command center for your tool. It processes user requ
 
 #### **Step 2.1: Create a New Python Project**  
 1. Open Visual Studio Code.  
-2. In the terminal, create a new folder for your project and navigate to it:  
+2. In the terminal, create a new folder for our project and navigate to it:  
    ```bash
    mkdir science-decoder
    cd science-decoder
    ```  
 
-3. Create a Python virtual environment (this keeps your libraries organized):  
+3. Create a Python virtual environment (this keeps our libraries organized):  
    ```bash
    python -m venv env
    source env/bin/activate  # Use "env\Scripts\activate" on Windows
    ```  
 
-4. Open a new file called `main.py` inside the folder. This will be your backend's starting point.  
+4. Open a new file called `main.py` inside the folder. This will be our backend's starting point.  
 
 ---
 
 #### **Step 2.2: Set Up FastAPI**  
-1. In `main.py`, write the following code to start your FastAPI app:  
+1. In `main.py`, write the following code to start our FastAPI app:  
    ```python
    from fastapi import FastAPI
 
@@ -55,15 +62,15 @@ Think of the backend as the command center for your tool. It processes user requ
        return {"message": "Welcome to the Science Decoder Tool!"}
    ```  
 
-2. Run your FastAPI app:  
+2. Run our FastAPI app:  
    ```bash
    uvicorn main:app --reload
    ```  
-   - Open your browser and go to `http://127.0.0.1:8000`. You should see:  
+   - Open our browser and go to `http://127.0.0.1:8000`. We should see:  
      ```json
      {"message": "Welcome to the Science Decoder Tool!"}
      ```  
-   - Celebrate! You’ve built a working backend.  
+   - Celebrate! We’ve built a working backend.  
 
 ---
 
@@ -101,7 +108,7 @@ SciBERT helps us make sense of scientific language. Let’s set it up:
 ---
 
 #### **Step 2.4: Connect to FAISS**  
-FAISS is the tool that quickly finds relevant chunks of data. Let’s integrate it:  
+FAISS is the tool that quickly finds relevant chunks of data. FAISS stands for Facebook AI Similarity Search. It's a library that allows developers to quickly search for embeddings of multimedia documents that are similar to each other. It includes nearest-neighbor search implementations. Let’s integrate it:  
 1. Install FAISS if you haven’t already:  
    ```bash
    pip install faiss-cpu
@@ -136,19 +143,19 @@ FAISS is the tool that quickly finds relevant chunks of data. Let’s integrate 
 
 ### **Weaknesses to Watch Out For**  
 - **Limited Context**: SciBERT processes one question at a time, so it doesn’t “remember” past questions. We’ll address this in Step 3.  
-- **Learning Curve**: New tools like FAISS might feel tricky at first, but practice makes perfect.  
+- **Learning Curve**: It takes time to learn new tools like FAISS. It might feel challenging at first. That means we're learning. Don't give up.  
 
 ---
 
-### **Celebrate Your Progress!**  
-You’ve just built the brain of the Science Decoder Tool! You now have a backend that can:  
+### **Celebrate Our Progress!**  
+We built the brain of the Science Decoder Tool! Now we have a backend that can:  
 - Answer questions using SciBERT.  
 - Quickly search through indexed data with FAISS.  
 
 ---
 
 ### **What’s Next?**  
-In **Step 3**, we’ll tackle the database. You’ll learn to use MongoDB to store and manage the data for your tool. Plus, we’ll connect MongoDB to our FAISS index to make the tool even more powerful.  
+In **Step 3**, we’ll tackle the database. You’ll learn to use MongoDB to store and manage the data for our tool. Plus, we’ll connect MongoDB to our FAISS index to make the tool even more powerful.  
 
 Get ready to take your project to the next level. See you in the next post!  
 
