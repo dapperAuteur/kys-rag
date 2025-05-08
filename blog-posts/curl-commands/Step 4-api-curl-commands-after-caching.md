@@ -44,7 +44,7 @@ curl -X POST http://localhost:8000/scientific-studies/ \
 
 ### Get Study
 ```bash
-curl -X GET http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95
+curl -X GET http://localhost:8000/scientific-studies/681d2987d7c923624e800bf5
 ```
 ```json
 {
@@ -61,17 +61,11 @@ curl -X GET http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95
     "created_at": "2024-01-24T10:00:00Z",
     "updated_at": "2024-01-24T10:00:00Z"
 }
-```
-# NOT WORKING AS EXPECTED 
-```
-% curl -X PUT http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95/citations \
--H "Content-Type: application/json" \
--d '["citation1", "citation2"]'
-{"detail":"Scientific study not found"}%
+
 ```
 ### Update Study Citations
 ```bash
-curl -X PUT http://localhost:8000/scientific-studies/6781fc091cdcaeb690223c95/citations \
+curl -X PUT http://localhost:8000/scientific-studies/681d2987d7c923624e800bf5/citations \
 -H "Content-Type: application/json" \
 -d '["citation1", "citation2"]'
 ```
@@ -118,7 +112,7 @@ curl -X POST http://localhost:8000/articles/ \
 
 ### Add Claim to Article
 ```bash
-curl -X POST http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims \
+curl -X POST http://localhost:8000/articles/681d2a27d7c923624e800bf6/claims \
 -H "Content-Type: application/json" \
 -d '{
     "text": "AI can diagnose cancer with 99% accuracy",
@@ -138,7 +132,7 @@ curl -X POST http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims \
 
 ### Verify Claim
 ```bash
-curl -X PUT "http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims/0/verify?verification_notes=Found%20supporting%20evidence&confidence_score=0.9&verified=true"
+curl -X PUT "http://localhost:8000/articles/681d2a27d7c923624e800bf6/claims/0/verify?verification_notes=Found%20supporting%20evidence&confidence_score=0.9&verified=true"
 ```
 ```json
 {
@@ -153,7 +147,7 @@ curl -X PUT "http://localhost:8000/articles/6781fd051cdcaeb690223c96/claims/0/ve
 
 ### Link Study to Article
 ```bash
-curl -X POST http://localhost:8000/articles/6781fd051cdcaeb690223c96/scientific-studies/6781fc091cdcaeb690223c95
+curl -X POST http://localhost:8000/articles/681d2a27d7c923624e800bf6/scientific-studies/681d2987d7c923624e800bf5
 ```
 ```json
 {
@@ -204,11 +198,6 @@ curl -X POST http://localhost:8000/search/ \
 ]
 ```
 
-# NOT WORKING AS EXPECTED 
-```
- % curl -X GET "http://localhost:8000/search/topic/AI%20Healthcare?content_type=article&limit=2"
-{"detail":"'ArticleService' object has no attribute 'search_by_topic'"}%
-```
 ### Search by Topic
 ```bash
 curl -X GET "http://localhost:8000/search/topic/AI%20Healthcare?content_type=article&limit=5"
@@ -227,7 +216,7 @@ curl -X GET "http://localhost:8000/search/topic/AI%20Healthcare?content_type=art
 
 ### Find Related Content
 ```bash
-curl -X GET "http://localhost:8000/search/related/article/6781fd051cdcaeb690223c96?limit=5"
+curl -X GET "http://localhost:8000/search/related/article/681d2a27d7c923624e800bf6?limit=5"
 ```
 ```json
 {
@@ -256,10 +245,7 @@ curl -X POST http://localhost:8000/chat/messages \
     "timestamp": "2024-01-24T10:00:00Z"
 }
 ```
-# NOT WORKING AS EXPECTED 
-```
-Returned empty array instead of expected json.
-```
+
 ### Get Chat History
 ```bash
 curl -X GET "http://localhost:8000/chat/history/scientific_study/6781fc091cdcaeb690223c95?limit=50"
@@ -276,23 +262,15 @@ curl -X GET "http://localhost:8000/chat/history/scientific_study/6781fc091cdcaeb
 ]
 ```
 
-# NOT WORKING AS EXCPECTED
-```
-% curl -X POST http://localhost:8000/chat/scientific-studies/6781fc091cdcaeb690223c95 \
--H "Content-Type: application/json" \
--d '{
-    "question": "What methodology was used in this study?"
-}'
-{"detail":"2 validation errors for ScientificStudyAnalysisResponse\nfindings\n  Field required [type=missing, input_value={'content_type': 'scienti...in Healthcare. Nature.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.10/v/missing\nconfidence_score\n  Field required [type=missing, input_value={'content_type': 'scienti...in Healthcare. Nature.'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.10/v/missing"}%
-```
 ### Analyze Scientific Study
 ```bash
-curl -X POST http://localhost:8000/chat/scientific-studies/6781fc091cdcaeb690223c95 \
+curl -X POST http://localhost:8000/chat/scientific-studies/681d2987d7c923624e800bf5 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What methodology was used in this study?"
 }'
 ```
+
 ```json
 {
     "status": "success",
@@ -309,18 +287,10 @@ curl -X POST http://localhost:8000/chat/scientific-studies/6781fc091cdcaeb690223
     "analysis_timestamp": "2024-01-24T10:00:00Z"
 }
 ```
-# NOT WORKING AS EXCPECTED
-```
-% curl -X POST http://localhost:8000/chat/articles/6781fd051cdcaeb690223c96 \
--H "Content-Type: application/json" \
--d '{
-    "question": "What claims does this article make about AI?"
-}'
-{"detail":"1 validation error for ArticleAnalysisResponse\nclaims.0.confidence_score\n  Field required [type=missing, input_value={'text': 'AI can diagnose...nd supporting evidence'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.10/v/missing"}%
-```
+
 ### Analyze Article
 ```bash
-curl -X POST http://localhost:8000/chat/articles/6781fd051cdcaeb690223c96 \
+curl -X POST http://localhost:8000/chat/articles/681d2a27d7c923624e800bf6 \
 -H "Content-Type: application/json" \
 -d '{
     "question": "What claims does this article make about AI?"
