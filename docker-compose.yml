@@ -1,0 +1,16 @@
+version: '3.8' # Specifies the Docker Compose file format version
+
+services:
+  mongodb:
+    image: mongo:latest # Use the latest official MongoDB image
+    container_name: science_decoder # A friendly name for your container
+    ports:
+      - "27017:27017" # Map port 27017 on your host to port 27017 in the container
+    volumes:
+      - ./mongo-data:/data/db # Persist MongoDB data in a local directory named 'mongo-data'
+    restart: unless-stopped # Ensures the container restarts unless manually stopped
+
+# Optional: Define a network if you plan to add more services later
+# networks:
+#   app-network:
+#     driver: bridge
